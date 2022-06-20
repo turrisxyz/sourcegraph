@@ -81,6 +81,10 @@ mocks:
     interfaces:
       - QueryResolver
       - Resolver
+  - filename: enterprise/cmd/frontend/internal/executorqueue/mocks_test.go
+    path: github.com/sourcegraph/sourcegraph/enterprise/cmd/frontend/internal/executorqueue
+    interfaces:
+      - GitserverClient
   - filename: enterprise/cmd/frontend/internal/executorqueue/handler/mocks_test.go
     path: github.com/sourcegraph/sourcegraph/internal/services/executors/store
     interfaces:

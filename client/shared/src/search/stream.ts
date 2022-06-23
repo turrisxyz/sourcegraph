@@ -216,6 +216,8 @@ export interface Filter {
     kind: string
 }
 
+export type AlertKind = 'lucky-search-queries'
+
 interface Alert {
     title: string
     description?: string | null

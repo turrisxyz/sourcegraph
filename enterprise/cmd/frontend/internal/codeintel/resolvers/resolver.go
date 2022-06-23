@@ -247,7 +247,28 @@ func (r *resolver) GetConfigurationPolicyByID(ctx context.Context, id int) (stor
 }
 
 func (r *resolver) CreateConfigurationPolicy(ctx context.Context, configurationPolicy store.ConfigurationPolicy) (store.ConfigurationPolicy, error) {
-	return r.dbStore.CreateConfigurationPolicy(ctx, configurationPolicy)
+	policy, err := r.dbStore.CreateConfigurationPolicy(ctx, configurationPolicy)
+	if err != nil {
+		return policy, err
+	}
+
+	if policy.RepositoryPatterns != nil && len(*policy.RepositoryPatterns) != 0 {
+		var patterns []string
+		if policy.RepositoryPatterns != nil {
+			patterns = *policy.RepositoryPatterns
+		}
+
+		var repositoryMatchLimit *int
+		if val := conf.CodeIntelAutoIndexingPolicyRepositoryMatchLimit(); val != -1 {
+			repositoryMatchLimit = &val
+		}
+
+		if err := r.dbStore.UpdateReposMatchingPatterns(ctx, patterns, policy.ID, repositoryMatchLimit); err != nil {
+			return policy, err
+		}
+	}
+
+	return policy, nil
 }
 
 func (r *resolver) UpdateConfigurationPolicy(ctx context.Context, policy store.ConfigurationPolicy) (err error) {

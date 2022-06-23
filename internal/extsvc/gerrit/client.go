@@ -74,7 +74,6 @@ func (c *Client) listAccounts(ctx context.Context, qsAccounts url.Values) (ListA
 	uAllProjects := url.URL{Path: urlPath, RawQuery: qsAccounts.Encode()}
 
 	reqAllAccounts, err := http.NewRequest("GET", uAllProjects.String(), nil)
-
 	if err != nil {
 		return nil, err
 	}
@@ -86,11 +85,9 @@ func (c *Client) listAccounts(ctx context.Context, qsAccounts url.Values) (ListA
 }
 
 func (c *Client) GetGroup(ctx context.Context, groupName string) (Group, error) {
-
 	urlGroup := url.URL{Path: fmt.Sprintf("a/groups/%s", groupName)}
 
 	reqAllAccounts, err := http.NewRequest("GET", urlGroup.String(), nil)
-
 	if err != nil {
 		return Group{}, err
 	}
@@ -111,7 +108,6 @@ type ListProjectsArgs struct {
 type ListProjectsResponse map[string]*Project
 
 func (c *Client) ListProjects(ctx context.Context, opts ListProjectsArgs) (projects *ListProjectsResponse, nextPage bool, err error) {
-
 	// Unfortunately Gerrit APIs are quite limited and don't support pagination well.
 	// Currently, if you want to only get CODE projects and want to know if there is another page
 	// to query for, the only way to do that is to query twice and compare the results.
@@ -178,7 +174,6 @@ func (c *Client) do(ctx context.Context, req *http.Request, result any) (*http.R
 	}
 
 	resp, err := c.httpClient.Do(req)
-
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +181,6 @@ func (c *Client) do(ctx context.Context, req *http.Request, result any) (*http.R
 	defer resp.Body.Close()
 
 	bs, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return nil, err
 	}

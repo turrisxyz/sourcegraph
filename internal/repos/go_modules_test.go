@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/internal/codeintel/dependencies"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/testutil"
@@ -12,6 +14,7 @@ import (
 )
 
 func TestGoModulesSource_ListRepos(t *testing.T) {
+	logger := logtest.Scoped(t)
 	ctx := context.Background()
 	depsSvc := testDependenciesService(ctx, t, []dependencies.Repo{
 		{
@@ -64,8 +67,7 @@ func TestGoModulesSource_ListRepos(t *testing.T) {
 	}
 
 	src.SetDependenciesService(depsSvc)
-
-	repos, err := listAll(ctx, src)
+	repos, err := listAll(logger, ctx, src)
 	if err != nil {
 		t.Fatal(err)
 	}

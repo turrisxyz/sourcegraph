@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/goware/urlx"
+	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
@@ -56,7 +57,7 @@ func NewPagureSource(svc *types.ExternalService, cf *httpcli.Factory) (*PagureSo
 }
 
 // ListRepos returns all Pagure repositories configured with this PagureSource's config.
-func (s *PagureSource) ListRepos(ctx context.Context, results chan SourceResult) {
+func (s *PagureSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	args := pagure.ListProjectsArgs{
 		Cursor:    &pagure.Pagination{PerPage: s.perPage, Page: 1},
 		Tags:      s.cli.Config.Tags,

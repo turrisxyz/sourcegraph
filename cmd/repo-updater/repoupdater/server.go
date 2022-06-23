@@ -9,7 +9,6 @@ import (
 	"time"
 
 	otlog "github.com/opentracing/opentracing-go/log"
-
 	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
@@ -205,7 +204,7 @@ func (s *Server) handleExternalServiceSync(w http.ResponseWriter, r *http.Reques
 	if sourcer = s.Sourcer; sourcer == nil {
 		db := database.NewDBWith(logger, s)
 		depsSvc := livedependencies.GetService(db, nil)
-		sourcer = repos.NewSourcer(db, httpcli.ExternalClientFactory, repos.WithDependenciesService(depsSvc))
+		sourcer = repos.NewSourcer(logger, db, httpcli.ExternalClientFactory, repos.WithDependenciesService(depsSvc))
 	}
 	src, err := sourcer(ctx, &types.ExternalService{
 		ID:              req.ExternalService.ID,
@@ -215,13 +214,12 @@ func (s *Server) handleExternalServiceSync(w http.ResponseWriter, r *http.Reques
 		NamespaceUserID: req.ExternalService.NamespaceUserID,
 		NamespaceOrgID:  req.ExternalService.NamespaceOrgID,
 	})
-
 	if err != nil {
 		logger.Error("server.external-service-sync", log.Error(err))
 		return
 	}
 
-	err = externalServiceValidate(ctx, req, src)
+	err = externalServiceValidate(logger, ctx, req, src)
 	if err == github.ErrIncompleteResults {
 		logger.Info("server.external-service-sync", log.Error(err))
 		syncResult := &protocol.ExternalServiceSyncResult{
@@ -264,7 +262,7 @@ func (s *Server) handleExternalServiceSync(w http.ResponseWriter, r *http.Reques
 	})
 }
 
-func externalServiceValidate(ctx context.Context, req protocol.ExternalServiceSyncRequest, src repos.Source) error {
+func externalServiceValidate(logger log.Logger, ctx context.Context, req protocol.ExternalServiceSyncRequest, src repos.Source) error {
 	if !req.ExternalService.DeletedAt.IsZero() {
 		// We don't need to check deleted services.
 		return nil
@@ -286,7 +284,7 @@ func externalServiceValidate(ctx context.Context, req protocol.ExternalServiceSy
 	}()
 
 	go func() {
-		src.ListRepos(ctx, results)
+		src.ListRepos(logger, ctx, results)
 		close(results)
 	}()
 

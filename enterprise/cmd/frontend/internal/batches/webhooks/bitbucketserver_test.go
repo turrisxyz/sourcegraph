@@ -16,6 +16,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/sources"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/store"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/syncer"
@@ -36,6 +38,7 @@ import (
 // Run from integration_test.go
 func testBitbucketServerWebhook(db database.DB, userID int32) func(*testing.T) {
 	return func(t *testing.T) {
+		logger := logtest.Scoped(t)
 		now := timeutil.Now()
 		clock := func() time.Time { return now }
 
@@ -73,12 +76,12 @@ func testBitbucketServerWebhook(db database.DB, userID int32) func(*testing.T) {
 			t.Fatal(t)
 		}
 
-		bitbucketSource, err := repos.NewBitbucketServerSource(extSvc, cf)
+		bitbucketSource, err := repos.NewBitbucketServerSource(logger, extSvc, cf)
 		if err != nil {
 			t.Fatal(t)
 		}
 
-		bitbucketRepo, err := getSingleRepo(ctx, bitbucketSource, "bitbucket.sgdev.org/SOUR/automation-testing")
+		bitbucketRepo, err := getSingleRepo(logger, ctx, bitbucketSource, "bitbucket.sgdev.org/SOUR/automation-testing")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -208,7 +211,7 @@ func testBitbucketServerWebhook(db database.DB, userID int32) func(*testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					err = os.WriteFile(fixtureFile, data, 0666)
+					err = os.WriteFile(fixtureFile, data, 0o666)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -221,7 +224,6 @@ func testBitbucketServerWebhook(db database.DB, userID int32) func(*testing.T) {
 				if diff := cmp.Diff(tc.ChangesetEvents, have, opts...); diff != "" {
 					t.Error(diff)
 				}
-
 			})
 		}
 	}

@@ -3,6 +3,7 @@ package sources
 import (
 	"context"
 
+	"github.com/sourcegraph/log"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/store"
 	btypes "github.com/sourcegraph/sourcegraph/enterprise/internal/batches/types"
 	"github.com/sourcegraph/sourcegraph/internal/database"
@@ -94,8 +95,10 @@ type FakeChangesetSource struct {
 	Username string
 }
 
-var _ ChangesetSource = &FakeChangesetSource{}
-var _ DraftChangesetSource = &FakeChangesetSource{}
+var (
+	_ ChangesetSource      = &FakeChangesetSource{}
+	_ DraftChangesetSource = &FakeChangesetSource{}
+)
 
 func (s *FakeChangesetSource) CreateDraftChangeset(ctx context.Context, c *Changeset) (bool, error) {
 	s.CreateDraftChangesetCalled = true
@@ -187,7 +190,7 @@ func (s *FakeChangesetSource) UpdateChangeset(ctx context.Context, c *Changeset)
 
 var fakeNotImplemented = errors.New("not implemented in FakeChangesetSource")
 
-func (s *FakeChangesetSource) ListRepos(ctx context.Context, results chan repos.SourceResult) {
+func (s *FakeChangesetSource) ListRepos(logger log.Logger, ctx context.Context, results chan repos.SourceResult) {
 	s.ListReposCalled = true
 
 	results <- repos.SourceResult{Source: s, Err: fakeNotImplemented}
@@ -198,6 +201,7 @@ func (s *FakeChangesetSource) ExternalServices() types.ExternalServices {
 
 	return types.ExternalServices{s.Svc}
 }
+
 func (s *FakeChangesetSource) LoadChangeset(ctx context.Context, c *Changeset) error {
 	s.LoadChangesetCalled = true
 

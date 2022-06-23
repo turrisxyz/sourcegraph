@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/sourcegraph/log"
+
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/conf/reposource"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
@@ -47,7 +49,7 @@ func NewOtherSource(svc *types.ExternalService, cf *httpcli.Factory) (*OtherSour
 
 // ListRepos returns all Other repositories accessible to all connections configured
 // in Sourcegraph via the external services configuration.
-func (s OtherSource) ListRepos(ctx context.Context, results chan SourceResult) {
+func (s OtherSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	if len(s.conn.Repos) == 1 && (s.conn.Repos[0] == "src-expose" || s.conn.Repos[0] == "src-serve") {
 		repos, err := s.srcExpose(ctx)
 		if err != nil {

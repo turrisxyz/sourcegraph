@@ -186,8 +186,8 @@ func (r *externalServiceResolver) NextSyncAt() *DateTime {
 
 var scopeCache = rcache.New("extsvc_token_scope")
 
-func (r *externalServiceResolver) GrantedScopes(ctx context.Context) (*[]string, error) {
-	scopes, err := repos.GrantedScopes(ctx, scopeCache, r.db, r.externalService)
+func (r *externalServiceResolver) GrantedScopes(logger log.Logger, ctx context.Context) (*[]string, error) {
+	scopes, err := repos.GrantedScopes(logger, ctx, scopeCache, r.db, r.externalService)
 	if err != nil {
 		// It's possible that we fail to fetch scope from the code host, in this case we
 		// don't want the entire resolver to fail.

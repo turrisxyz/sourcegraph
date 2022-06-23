@@ -100,6 +100,7 @@ var testDependencies = []string{
 	"pkg2@0.1-abc",
 	"pkg2@1",
 }
+
 var testDependencyRepos = func() []dependencies.Repo {
 	dependencyRepos := []dependencies.Repo{}
 	for i, depStr := range testDependencies {
@@ -120,6 +121,7 @@ var testDependencyRepos = func() []dependencies.Repo {
 }()
 
 func TestNPMPackagesSource_ListRepos(t *testing.T) {
+	logger := logtest.Scoped(t)
 	ctx := context.Background()
 	depsSvc := testDependenciesService(ctx, t, []dependencies.Repo{
 		{
@@ -169,7 +171,7 @@ func TestNPMPackagesSource_ListRepos(t *testing.T) {
 
 	src.SetDependenciesService(depsSvc)
 
-	repos, err := listAll(ctx, src)
+	repos, err := listAll(logger, ctx, src)
 	sort.Slice(repos, func(i, j int) bool {
 		return repos[i].Name < repos[j].Name
 	})

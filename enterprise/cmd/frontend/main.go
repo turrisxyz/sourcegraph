@@ -47,7 +47,7 @@ func init() {
 	oobmigration.ReturnEnterpriseMigrations = true
 }
 
-type EnterpriseInitializer = func(context.Context, database.DB, conftypes.UnifiedWatchable, *enterprise.Services, *observation.Context) error
+type EnterpriseInitializer = func(log.Logger, context.Context, database.DB, conftypes.UnifiedWatchable, *enterprise.Services, *observation.Context) error
 
 var initFunctions = map[string]EnterpriseInitializer{
 	"authz":          authz.Init,
@@ -111,7 +111,7 @@ func enterpriseSetupHook(db database.DB, conf conftypes.UnifiedWatchable) enterp
 	// Initialize all the enterprise-specific services that do not need the codeintel-specific services.
 	for name, fn := range initFunctions {
 		initLogger := logger.Scoped(name, "")
-		if err := fn(ctx, db, conf, &enterpriseServices, observationContext); err != nil {
+		if err := fn(logger, ctx, db, conf, &enterpriseServices, observationContext); err != nil {
 			initLogger.Fatal("failed to initialize", log.Error(err))
 		}
 	}

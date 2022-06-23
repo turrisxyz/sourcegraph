@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/inconshreveable/log15"
+	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/authz/bitbucketserver"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/authz/github"
@@ -34,6 +35,7 @@ import (
 // desired, callers should use `(*Provider).ValidateConnection` directly to get warnings related
 // to connection issues.
 func ProvidersFromConfig(
+	logger log.Logger,
 	ctx context.Context,
 	cfg conftypes.SiteConfigQuerier,
 	store database.ExternalServiceStore,
@@ -137,7 +139,7 @@ func ProvidersFromConfig(
 			enableGithubInternalRepoVisibility = ef.EnableGithubInternalRepoVisibility
 		}
 
-		ghProviders, ghProblems, ghWarnings := github.NewAuthzProviders(store, gitHubConns, cfg.SiteConfig().AuthProviders, enableGithubInternalRepoVisibility)
+		ghProviders, ghProblems, ghWarnings := github.NewAuthzProviders(logger, store, gitHubConns, cfg.SiteConfig().AuthProviders, enableGithubInternalRepoVisibility)
 		providers = append(providers, ghProviders...)
 		seriousProblems = append(seriousProblems, ghProblems...)
 		warnings = append(warnings, ghWarnings...)
@@ -195,6 +197,7 @@ var MockProviderFromExternalService func(siteConfig schema.SiteConfiguration, sv
 // desired, callers should use `(*Provider).ValidateConnection` directly to get warnings related
 // to connection issues.
 func ProviderFromExternalService(
+	logger log.Logger,
 	externalServicesStore database.ExternalServiceStore,
 	siteConfig schema.SiteConfiguration,
 	svc *types.ExternalService,
@@ -221,6 +224,7 @@ func ProviderFromExternalService(
 	switch c := cfg.(type) {
 	case *schema.GitHubConnection:
 		providers, problems, _ = github.NewAuthzProviders(
+			logger,
 			externalServicesStore,
 			[]*github.ExternalConnection{
 				{

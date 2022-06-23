@@ -86,7 +86,7 @@ func NewSourceMetrics() SourceMetrics {
 }
 
 // ListRepos calls into the inner Source registers the observed results.
-func (o *observedSource) ListRepos(ctx context.Context, results chan SourceResult) {
+func (o *observedSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	var (
 		err   error
 		count float64
@@ -102,7 +102,7 @@ func (o *observedSource) ListRepos(ctx context.Context, results chan SourceResul
 
 	uncounted := make(chan SourceResult)
 	go func() {
-		o.Source.ListRepos(ctx, uncounted)
+		o.Source.ListRepos(logger, ctx, uncounted)
 		close(uncounted)
 	}()
 

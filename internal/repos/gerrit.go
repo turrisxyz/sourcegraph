@@ -7,6 +7,8 @@ import (
 
 	"github.com/goware/urlx"
 
+	"github.com/sourcegraph/log"
+
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/gerrit"
@@ -56,7 +58,7 @@ func NewGerritSource(svc *types.ExternalService, cf *httpcli.Factory) (*GerritSo
 }
 
 // ListRepos returns all Gerrit repositories configured with this GerritSource's config.
-func (s *GerritSource) ListRepos(ctx context.Context, results chan SourceResult) {
+func (s *GerritSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	args := gerrit.ListProjectsArgs{
 		Cursor: &gerrit.Pagination{PerPage: s.perPage, Page: 1},
 	}

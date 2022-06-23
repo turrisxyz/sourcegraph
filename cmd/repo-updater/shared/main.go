@@ -138,7 +138,7 @@ func Main(enterpriseInit EnterpriseInit) {
 
 		depsSvc := livedependencies.GetService(db, nil)
 		obsLogger := logger.Scoped("ObservedSource", "")
-		src = repos.NewSourcer(db, cf, repos.WithDependenciesService(depsSvc), repos.ObservedSource(obsLogger, m))
+		src = repos.NewSourcer(logger, db, cf, repos.WithDependenciesService(depsSvc), repos.ObservedSource(obsLogger, m))
 	}
 
 	updateScheduler := repos.NewUpdateScheduler(logger, db)
@@ -195,7 +195,7 @@ func Main(enterpriseInit EnterpriseInit) {
 		go syncer.RunSyncReposWithLastErrorsWorker(ctx, rateLimiter)
 	}
 
-	go repos.RunPhabricatorRepositorySyncWorker(ctx, store)
+	go repos.RunPhabricatorRepositorySyncWorker(logger, ctx, store)
 
 	// git-server repos purging thread
 	var purgeTTL time.Duration

@@ -59,7 +59,7 @@ func enterpriseInit(
 
 	permsStore := edb.Perms(logger, db, timeutil.Now)
 	permsSyncer := authz.NewPermsSyncer(logger.Scoped("PermsSyncer", "repository and user permissions syncer"), db, repoStore, permsStore, timeutil.Now, ratelimit.DefaultRegistry)
-	go startBackgroundPermsSync(ctx, permsSyncer, db)
+	go startBackgroundPermsSync(logger, ctx, permsSyncer, db)
 	debugDumpers = append(debugDumpers, permsSyncer)
 	if server != nil {
 		server.PermsSyncer = permsSyncer
@@ -69,13 +69,14 @@ func enterpriseInit(
 }
 
 // startBackgroundPermsSync sets up background permissions syncing.
-func startBackgroundPermsSync(ctx context.Context, syncer *authz.PermsSyncer, db ossDB.DB) {
+func startBackgroundPermsSync(logger log.Logger, ctx context.Context, syncer *authz.PermsSyncer, db ossDB.DB) {
 	globals.WatchPermissionsUserMapping()
 	go func() {
 		t := time.NewTicker(frontendAuthz.RefreshInterval())
 		for range t.C {
 			allowAccessByDefault, authzProviders, _, _ :=
 				frontendAuthz.ProvidersFromConfig(
+					logger,
 					ctx,
 					conf.Get(),
 					db.ExternalServices(),

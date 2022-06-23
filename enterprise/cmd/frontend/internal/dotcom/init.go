@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/graph-gophers/graphql-go"
+	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/enterprise"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
@@ -39,7 +40,7 @@ func (d dotcomRootResolver) NodeResolvers() map[string]graphqlbackend.NodeByIDFu
 
 var _ graphqlbackend.DotcomRootResolver = dotcomRootResolver{}
 
-func Init(ctx context.Context, db database.DB, _ conftypes.UnifiedWatchable, enterpriseServices *enterprise.Services, observationContext *observation.Context) error {
+func Init(logger log.Logger, ctx context.Context, db database.DB, _ conftypes.UnifiedWatchable, enterpriseServices *enterprise.Services, observationContext *observation.Context) error {
 	stripeEnabled := stripeutil.ValidateAndPublishConfig()
 	// Only enabled on Sourcegraph.com or when Stripe is configured correctly.
 	if envvar.SourcegraphDotComMode() || stripeEnabled {

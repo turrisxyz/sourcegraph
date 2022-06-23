@@ -137,9 +137,11 @@ func (prs *PullRequestStatus) Key() string {
 	return prs.URL
 }
 
-type MergeStrategy string
-type PullRequestState string
-type PullRequestStatusState string
+type (
+	MergeStrategy          string
+	PullRequestState       string
+	PullRequestStatusState string
+)
 
 const (
 	MergeStrategyMergeCommit MergeStrategy = "merge_commit"
@@ -164,9 +166,11 @@ type RenderedMarkup struct {
 	Type   string `json:"type,omitempty"`
 }
 
-type AccountStatus string
-type ParticipantRole string
-type ParticipantState string
+type (
+	AccountStatus    string
+	ParticipantRole  string
+	ParticipantState string
+)
 
 const (
 	AccountStatusActive AccountStatus = "active"

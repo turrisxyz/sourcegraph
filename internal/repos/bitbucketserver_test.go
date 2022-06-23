@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/auth"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/bitbucketserver"
@@ -22,6 +24,7 @@ import (
 )
 
 func TestBitbucketServerSource_MakeRepo(t *testing.T) {
+	logger := logtest.Scoped(t)
 	repos := GetReposFromTestdata(t, "bitbucketserver-repos.json")
 
 	cases := map[string]*schema.BitbucketServerConnection{
@@ -52,7 +55,7 @@ func TestBitbucketServerSource_MakeRepo(t *testing.T) {
 
 	for name, config := range cases {
 		t.Run(name, func(t *testing.T) {
-			s, err := newBitbucketServerSource(&svc, config, nil)
+			s, err := newBitbucketServerSource(logger, &svc, config, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -69,6 +72,7 @@ func TestBitbucketServerSource_MakeRepo(t *testing.T) {
 }
 
 func TestBitbucketServerSource_Exclude(t *testing.T) {
+	logger := logtest.Scoped(t)
 	b, err := os.ReadFile(filepath.Join("testdata", "bitbucketserver-repos.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -125,7 +129,7 @@ func TestBitbucketServerSource_Exclude(t *testing.T) {
 
 	for name, config := range cases {
 		t.Run(name, func(t *testing.T) {
-			s, err := newBitbucketServerSource(&svc, config, nil)
+			s, err := newBitbucketServerSource(logger, &svc, config, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -154,6 +158,7 @@ func TestBitbucketServerSource_Exclude(t *testing.T) {
 }
 
 func TestBitbucketServerSource_WithAuthenticator(t *testing.T) {
+	logger := logtest.Scoped(t)
 	svc := &types.ExternalService{
 		Kind: extsvc.KindBitbucketServer,
 		Config: marshalJSON(t, &schema.BitbucketServerConnection{
@@ -162,7 +167,7 @@ func TestBitbucketServerSource_WithAuthenticator(t *testing.T) {
 		}),
 	}
 
-	bbsSrc, err := NewBitbucketServerSource(svc, nil)
+	bbsSrc, err := NewBitbucketServerSource(logger, svc, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,6 +214,7 @@ func TestBitbucketServerSource_WithAuthenticator(t *testing.T) {
 }
 
 func TestBitbucketServerSource_ListByReposOnly(t *testing.T) {
+	logger := logtest.Scoped(t)
 	repos := GetReposFromTestdata(t, "bitbucketserver-repos.json")
 
 	mux := http.NewServeMux()
@@ -232,7 +238,7 @@ func TestBitbucketServerSource_ListByReposOnly(t *testing.T) {
 	cases, svc := GetConfig(t, server.URL, "secret")
 	for name, config := range cases {
 		t.Run(name, func(t *testing.T) {
-			s, err := newBitbucketServerSource(&svc, config, nil)
+			s, err := newBitbucketServerSource(logger, &svc, config, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -251,13 +257,14 @@ func TestBitbucketServerSource_ListByReposOnly(t *testing.T) {
 			results := make(chan SourceResult, 10)
 			defer close(results)
 
-			s.ListRepos(ctxWithTimeout, results)
+			s.ListRepos(logger, ctxWithTimeout, results)
 			VerifyData(t, ctxWithTimeout, 4, results)
 		})
 	}
 }
 
 func TestBitbucketServerSource_ListByRepositoryQuery(t *testing.T) {
+	logger := logtest.Scoped(t)
 	repos := GetReposFromTestdata(t, "bitbucketserver-repos.json")
 
 	type Results struct {
@@ -335,7 +342,7 @@ func TestBitbucketServerSource_ListByRepositoryQuery(t *testing.T) {
 		tc := tc
 		for name, config := range cases {
 			t.Run(name, func(t *testing.T) {
-				s, err := newBitbucketServerSource(&svc, config, nil)
+				s, err := newBitbucketServerSource(logger, &svc, config, nil)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -348,15 +355,15 @@ func TestBitbucketServerSource_ListByRepositoryQuery(t *testing.T) {
 				results := make(chan SourceResult, 10)
 				defer close(results)
 
-				s.ListRepos(ctxWithTimeout, results)
+				s.ListRepos(logger, ctxWithTimeout, results)
 				VerifyData(t, ctxWithTimeout, tc.exp, results)
 			})
 		}
 	}
-
 }
 
 func TestBitbucketServerSource_ListByProjectKeyMock(t *testing.T) {
+	logger := logtest.Scoped(t)
 	repos := GetReposFromTestdata(t, "bitbucketserver-repos.json")
 
 	type Results struct {
@@ -397,7 +404,7 @@ func TestBitbucketServerSource_ListByProjectKeyMock(t *testing.T) {
 	cases, svc := GetConfig(t, server.URL, "secret")
 	for name, config := range cases {
 		t.Run(name, func(t *testing.T) {
-			s, err := newBitbucketServerSource(&svc, config, nil)
+			s, err := newBitbucketServerSource(logger, &svc, config, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -413,13 +420,14 @@ func TestBitbucketServerSource_ListByProjectKeyMock(t *testing.T) {
 			results := make(chan SourceResult, 20)
 			defer close(results)
 
-			s.ListRepos(ctxWithTimeout, results)
+			s.ListRepos(logger, ctxWithTimeout, results)
 			VerifyData(t, ctxWithTimeout, 4, results)
 		})
 	}
 }
 
 func TestBitbucketServerSource_ListByProjectKeyAuthentic(t *testing.T) {
+	logger := logtest.Scoped(t)
 	url := "https://bitbucket.sgdev.org"
 	token := os.Getenv("BITBUCKET_SERVER_TOKEN")
 
@@ -427,7 +435,7 @@ func TestBitbucketServerSource_ListByProjectKeyAuthentic(t *testing.T) {
 
 	for name, config := range cases {
 		t.Run(name, func(t *testing.T) {
-			s, err := newBitbucketServerSource(&svc, config, nil)
+			s, err := newBitbucketServerSource(logger, &svc, config, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -444,7 +452,7 @@ func TestBitbucketServerSource_ListByProjectKeyAuthentic(t *testing.T) {
 			results := make(chan SourceResult, 5)
 			defer close(results)
 
-			s.ListRepos(ctxWithTimeOut, results)
+			s.ListRepos(logger, ctxWithTimeOut, results)
 
 			var got []*types.Repo
 
@@ -464,7 +472,6 @@ func TestBitbucketServerSource_ListByProjectKeyAuthentic(t *testing.T) {
 			}
 		})
 	}
-
 }
 
 func GetReposFromTestdata(t *testing.T, filename string) []*bitbucketserver.Repo {

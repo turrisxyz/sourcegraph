@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/sourcegraph/log"
+
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/conf/reposource"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
@@ -41,7 +43,7 @@ func newPerforceSource(svc *types.ExternalService, c *schema.PerforceConnection)
 
 // ListRepos returns all Perforce depots accessible to all connections
 // configured in Sourcegraph via the external services configuration.
-func (s PerforceSource) ListRepos(ctx context.Context, results chan SourceResult) {
+func (s PerforceSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	for _, depot := range s.config.Depots {
 		results <- SourceResult{Source: s, Repo: s.makeRepo(depot)}
 	}

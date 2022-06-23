@@ -67,12 +67,12 @@ var (
 )
 
 // NewGithubSource returns a new GitHubSource from the given external service.
-func NewGithubSource(externalServicesStore database.ExternalServiceStore, svc *types.ExternalService, cf *httpcli.Factory) (*GitHubSource, error) {
+func NewGithubSource(logger log.Logger, externalServicesStore database.ExternalServiceStore, svc *types.ExternalService, cf *httpcli.Factory) (*GitHubSource, error) {
 	var c schema.GitHubConnection
 	if err := jsonc.Unmarshal(svc.Config, &c); err != nil {
 		return nil, errors.Errorf("external service id=%d config error: %s", svc.ID, err)
 	}
-	return newGithubSource(externalServicesStore, svc, &c, cf)
+	return newGithubSource(logger, externalServicesStore, svc, &c, cf)
 }
 
 var githubRemainingGauge = promauto.NewGaugeVec(prometheus.GaugeOpts{
@@ -100,6 +100,7 @@ func IsGitHubAppCloudEnabled(dotcom *schema.Dotcom) bool {
 // stored in the given external service config. It automatically renews and
 // updates the access token if it had expired or about to expire in 5 minutes.
 func GetOrRenewGitHubAppInstallationAccessToken(
+	logger log.Logger,
 	ctx context.Context,
 	externalServicesStore database.ExternalServiceStore,
 	svc *types.ExternalService,
@@ -145,12 +146,13 @@ func GetOrRenewGitHubAppInstallationAccessToken(
 		// If we failed to update the new token and its expiration time, it is fine to
 		// try again later. We should not block further process since we already have the
 		// new token available for use at this time.
-		log15.Error("GetOrRenewGitHubAppInstallationAccessToken.updateExternalService", "id", svc.ID, "error", err)
+		logger.Error("GetOrRenewGitHubAppInstallationAccessToken.updateExternalService", log.Int64("id", svc.ID), log.Error(err))
 	}
 	return *tok.Token, nil
 }
 
 func newGithubSource(
+	logger log.Logger,
 	externalServicesStore database.ExternalServiceStore,
 	svc *types.ExternalService,
 	c *schema.GitHubConnection,
@@ -247,7 +249,7 @@ func newGithubSource(
 			return nil, errors.Wrap(err, "parse installation ID")
 		}
 
-		token, err := GetOrRenewGitHubAppInstallationAccessToken(context.Background(), externalServicesStore, svc, client, installationID)
+		token, err := GetOrRenewGitHubAppInstallationAccessToken(logger, context.Background(), externalServicesStore, svc, client, installationID)
 		if err != nil {
 			return nil, errors.Wrap(err, "get or renew GitHub App installation access token")
 		}
@@ -331,10 +333,10 @@ func (s GitHubSource) Version(ctx context.Context) (string, error) {
 
 // ListRepos returns all Github repositories accessible to all connections configured
 // in Sourcegraph via the external services configuration.
-func (s GitHubSource) ListRepos(ctx context.Context, results chan SourceResult) {
+func (s GitHubSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	unfiltered := make(chan *githubResult)
 	go func() {
-		s.listAllRepositories(ctx, unfiltered)
+		s.listAllRepositories(logger, ctx, unfiltered)
 		close(unfiltered)
 	}()
 
@@ -474,7 +476,7 @@ func (s *GitHubSource) paginate(ctx context.Context, results chan *githubResult,
 // by hitting the /orgs/:org/repos endpoint.
 //
 // It returns an error if the request fails on the first page.
-func (s *GitHubSource) listOrg(ctx context.Context, org string, results chan *githubResult) {
+func (s *GitHubSource) listOrg(logger log.Logger, ctx context.Context, org string, results chan *githubResult) {
 	dedupC := make(chan *githubResult)
 
 	// Currently, the Github API doesn't return internal repos
@@ -499,14 +501,14 @@ func (s *GitHubSource) listOrg(ctx context.Context, org string, results chan *gi
 				}
 
 				remaining, reset, retry, _ := s.v3Client.RateLimitMonitor().Get()
-				log15.Debug(
+				logger.Debug(
 					"github sync: ListOrgRepositories",
-					"repos", len(repos),
-					"rateLimitCost", cost,
-					"rateLimitRemaining", remaining,
-					"rateLimitReset", reset,
-					"retryAfter", retry,
-					"type", tp,
+					log.Int("repos", len(repos)),
+					log.Int("rateLimitCost", cost),
+					log.Int("rateLimitRemaining", remaining),
+					log.Duration("rateLimitReset", reset),
+					log.Duration("retryAfter", retry),
+					log.String("type", tp),
 				)
 			}()
 
@@ -516,13 +518,13 @@ func (s *GitHubSource) listOrg(ctx context.Context, org string, results chan *gi
 		return oerr
 	}
 
-	go func() {
+	go func(logger log.Logger) {
 		defer close(dedupC)
 
 		err := getReposByType("all")
 		// Handle 404 from org repos endpoint by trying user repos endpoint
 		if err != nil {
-			if s.listUser(ctx, org, dedupC) != nil {
+			if s.listUser(logger, ctx, org, dedupC) != nil {
 				dedupC <- &githubResult{
 					err: err,
 				}
@@ -537,7 +539,7 @@ func (s *GitHubSource) listOrg(ctx context.Context, org string, results chan *gi
 				err: err,
 			}
 		}
-	}()
+	}(logger)
 
 	seen := make(map[string]bool)
 
@@ -558,7 +560,7 @@ func (s *GitHubSource) listOrg(ctx context.Context, org string, results chan *gi
 // by hitting the /users/:user/repos endpoint.
 //
 // It returns an error if the request fails on the first page.
-func (s *GitHubSource) listUser(ctx context.Context, user string, results chan *githubResult) (fail error) {
+func (s *GitHubSource) listUser(logger log.Logger, ctx context.Context, user string, results chan *githubResult) (fail error) {
 	s.paginate(ctx, results, func(page int) (repos []*github.Repository, hasNext bool, cost int, err error) {
 		defer func() {
 			if err != nil && page == 1 {
@@ -566,13 +568,13 @@ func (s *GitHubSource) listUser(ctx context.Context, user string, results chan *
 			}
 
 			remaining, reset, retry, _ := s.v3Client.RateLimitMonitor().Get()
-			log15.Debug(
+			logger.Debug(
 				"github sync: ListUserRepositories",
-				"repos", len(repos),
-				"rateLimitCost", cost,
-				"rateLimitRemaining", remaining,
-				"rateLimitReset", reset,
-				"retryAfter", retry,
+				log.Int("repos", len(repos)),
+				log.Int("rateLimitCost", cost),
+				log.Int("rateLimitRemaining", remaining),
+				log.Duration("rateLimitReset", reset),
+				log.Duration("retryAfter", retry),
 			)
 		}()
 		return s.v3Client.ListUserRepositories(ctx, user, page)
@@ -861,7 +863,7 @@ func matchOrg(q string) string {
 // - `none`: disables `repositoryQuery`
 // Inputs other than these three keywords will be queried using
 // GitHub advanced repository search (endpoint: /search/repositories)
-func (s *GitHubSource) listRepositoryQuery(ctx context.Context, query string, results chan *githubResult) {
+func (s *GitHubSource) listRepositoryQuery(logger log.Logger, ctx context.Context, query string, results chan *githubResult) {
 	switch query {
 	case "public":
 		s.listPublic(ctx, results)
@@ -882,7 +884,7 @@ func (s *GitHubSource) listRepositoryQuery(ctx context.Context, query string, re
 	// If the org repo list API fails, we
 	// try the user repo list API.
 	if org := matchOrg(query); org != "" {
-		s.listOrg(ctx, org, results)
+		s.listOrg(logger, ctx, org, results)
 		return
 	}
 
@@ -893,17 +895,17 @@ func (s *GitHubSource) listRepositoryQuery(ctx context.Context, query string, re
 
 // listAllRepositories returns the repositories from the given `orgs`, `repos`, and
 // `repositoryQuery` config options excluding the ones specified by `exclude`.
-func (s *GitHubSource) listAllRepositories(ctx context.Context, results chan *githubResult) {
+func (s *GitHubSource) listAllRepositories(logger log.Logger, ctx context.Context, results chan *githubResult) {
 	s.listRepos(ctx, s.config.Repos, results)
 
 	// Admins normally add to end of lists, so end of list most likely has new
 	// repos => stream them first.
 	for i := len(s.config.RepositoryQuery) - 1; i >= 0; i-- {
-		s.listRepositoryQuery(ctx, s.config.RepositoryQuery[i], results)
+		s.listRepositoryQuery(logger, ctx, s.config.RepositoryQuery[i], results)
 	}
 
 	for i := len(s.config.Orgs) - 1; i >= 0; i-- {
-		s.listOrg(ctx, s.config.Orgs[i], results)
+		s.listOrg(logger, ctx, s.config.Orgs[i], results)
 	}
 }
 

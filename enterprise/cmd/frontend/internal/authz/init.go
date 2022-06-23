@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/inconshreveable/log15"
+	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/enterprise"
@@ -31,7 +32,7 @@ import (
 
 var clock = timeutil.Now
 
-func Init(ctx context.Context, db database.DB, _ conftypes.UnifiedWatchable, enterpriseServices *enterprise.Services, observationContext *observation.Context) error {
+func Init(logger log.Logger, ctx context.Context, db database.DB, _ conftypes.UnifiedWatchable, enterpriseServices *enterprise.Services, observationContext *observation.Context) error {
 	database.ValidateExternalServiceConfig = edb.ValidateExternalServiceConfig
 	database.AuthzWith = func(other basestore.ShareableStore) database.AuthzStore {
 		return edb.NewAuthzStore(observationContext.Logger, db, clock)
@@ -42,8 +43,7 @@ func Init(ctx context.Context, db database.DB, _ conftypes.UnifiedWatchable, ent
 	// TODO(nsc): use c
 	// Report any authz provider problems in external configs.
 	conf.ContributeWarning(func(cfg conftypes.SiteConfigQuerier) (problems conf.Problems) {
-		_, providers, seriousProblems, warnings :=
-			eiauthz.ProvidersFromConfig(ctx, cfg, extsvcStore, db)
+		_, providers, seriousProblems, warnings := eiauthz.ProvidersFromConfig(logger, ctx, cfg, extsvcStore, db)
 		problems = append(problems, conf.NewExternalServiceProblems(seriousProblems...)...)
 
 		// Add connection validation issue
@@ -68,7 +68,7 @@ func Init(ctx context.Context, db database.DB, _ conftypes.UnifiedWatchable, ent
 		}
 
 		// We can ignore problems returned here because they would have been surfaced in other places.
-		_, providers, _, _ := eiauthz.ProvidersFromConfig(ctx, conf.Get(), extsvcStore, db)
+		_, providers, _, _ := eiauthz.ProvidersFromConfig(logger, ctx, conf.Get(), extsvcStore, db)
 		if len(providers) == 0 {
 			return nil
 		}
@@ -177,8 +177,7 @@ func Init(ctx context.Context, db database.DB, _ conftypes.UnifiedWatchable, ent
 	go func() {
 		t := time.NewTicker(5 * time.Second)
 		for range t.C {
-			allowAccessByDefault, authzProviders, _, _ :=
-				eiauthz.ProvidersFromConfig(ctx, conf.Get(), extsvcStore, db)
+			allowAccessByDefault, authzProviders, _, _ := eiauthz.ProvidersFromConfig(logger, ctx, conf.Get(), extsvcStore, db)
 			authz.SetProviders(allowAccessByDefault, authzProviders)
 		}
 	}()

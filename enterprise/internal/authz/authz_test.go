@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/auth/providers"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/authz/gitlab"
 	"github.com/sourcegraph/sourcegraph/internal/authz"
@@ -461,6 +463,7 @@ func TestAuthzProvidersFromConfig(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		logger := logtest.Scoped(t)
 		t.Run(test.description, func(t *testing.T) {
 			externalServices := database.NewMockExternalServiceStore()
 			externalServices.ListFunc.SetDefaultHook(func(ctx context.Context, opt database.ExternalServicesListOptions) ([]*types.ExternalService, error) {
@@ -496,6 +499,7 @@ func TestAuthzProvidersFromConfig(t *testing.T) {
 			})
 
 			allowAccessByDefault, authzProviders, seriousProblems, _ := ProvidersFromConfig(
+				logger,
 				context.Background(),
 				staticConfig(test.cfg.SiteConfiguration),
 				externalServices,

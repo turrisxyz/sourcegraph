@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sourcegraph/log"
+
 	"github.com/sourcegraph/sourcegraph/internal/codeintel/dependencies"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
@@ -23,9 +25,9 @@ type Sourcer func(context.Context, *types.ExternalService) (Source, error)
 // http.Clients needed to contact the respective upstream code host APIs.
 //
 // The provided decorator functions will be applied to the Source.
-func NewSourcer(db database.DB, cf *httpcli.Factory, decs ...func(Source) Source) Sourcer {
+func NewSourcer(logger log.Logger, db database.DB, cf *httpcli.Factory, decs ...func(Source) Source) Sourcer {
 	return func(ctx context.Context, svc *types.ExternalService) (Source, error) {
-		src, err := NewSource(ctx, db, svc, cf)
+		src, err := NewSource(logger, ctx, db, svc, cf)
 		if err != nil {
 			return nil, err
 		}
@@ -39,18 +41,18 @@ func NewSourcer(db database.DB, cf *httpcli.Factory, decs ...func(Source) Source
 }
 
 // NewSource returns a repository yielding Source from the given ExternalService configuration.
-func NewSource(ctx context.Context, db database.DB, svc *types.ExternalService, cf *httpcli.Factory) (Source, error) {
+func NewSource(logger log.Logger, ctx context.Context, db database.DB, svc *types.ExternalService, cf *httpcli.Factory) (Source, error) {
 	externalServicesStore := db.ExternalServices()
 
 	switch strings.ToUpper(svc.Kind) {
 	case extsvc.KindGitHub:
-		return NewGithubSource(externalServicesStore, svc, cf)
+		return NewGithubSource(logger, externalServicesStore, svc, cf)
 	case extsvc.KindGitLab:
-		return NewGitLabSource(ctx, db, svc, cf)
+		return NewGitLabSource(logger, ctx, db, svc, cf)
 	case extsvc.KindGerrit:
 		return NewGerritSource(svc, cf)
 	case extsvc.KindBitbucketServer:
-		return NewBitbucketServerSource(svc, cf)
+		return NewBitbucketServerSource(logger, svc, cf)
 	case extsvc.KindBitbucketCloud:
 		return NewBitbucketCloudSource(svc, cf)
 	case extsvc.KindGitolite:
@@ -86,7 +88,7 @@ func NewSource(ctx context.Context, db database.DB, svc *types.ExternalService, 
 type Source interface {
 	// ListRepos sends all the repos a source yields over the passed in channel
 	// as SourceResults
-	ListRepos(context.Context, chan SourceResult)
+	ListRepos(log.Logger, context.Context, chan SourceResult)
 	// ExternalServices returns the ExternalServices for the Source.
 	ExternalServices() types.ExternalServices
 }
@@ -202,13 +204,13 @@ func sourceErrorFormatFunc(es []error) string {
 
 // listAll calls ListRepos on the given Source and collects the SourceResults
 // the Source sends over a channel into a slice of *types.Repo and a single error
-func listAll(ctx context.Context, src Source) ([]*types.Repo, error) {
+func listAll(logger log.Logger, ctx context.Context, src Source) ([]*types.Repo, error) {
 	results := make(chan SourceResult)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	go func() {
-		src.ListRepos(ctx, results)
+		src.ListRepos(logger, ctx, results)
 		close(results)
 	}()
 

@@ -12,6 +12,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/inconshreveable/log15"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/bitbucketcloud"
 	bbtest "github.com/sourcegraph/sourcegraph/internal/extsvc/bitbucketcloud/testing"
@@ -22,6 +24,7 @@ import (
 )
 
 func TestBitbucketCloudSource_ListRepos(t *testing.T) {
+	logger := logtest.Scoped(t)
 	assertAllReposListed := func(want []string) typestest.ReposAssertion {
 		return func(t testing.TB, rs types.Repos) {
 			t.Helper()
@@ -93,7 +96,7 @@ func TestBitbucketCloudSource_ListRepos(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			repos, err := listAll(context.Background(), bbcSrc)
+			repos, err := listAll(logger, context.Background(), bbcSrc)
 
 			if have, want := fmt.Sprint(err), tc.err; have != want {
 				t.Errorf("error:\nhave: %q\nwant: %q", have, want)
@@ -107,6 +110,7 @@ func TestBitbucketCloudSource_ListRepos(t *testing.T) {
 }
 
 func TestBitbucketCloudSource_makeRepo(t *testing.T) {
+	logger := logtest.Scoped(t)
 	b, err := os.ReadFile(filepath.Join("testdata", "bitbucketcloud-repos.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -157,7 +161,7 @@ func TestBitbucketCloudSource_makeRepo(t *testing.T) {
 
 			var got []*types.Repo
 			for _, r := range repos {
-				got = append(got, s.makeRepo(r))
+				got = append(got, s.makeRepo(logger, r))
 			}
 
 			testutil.AssertGolden(t, "testdata/golden/"+test.name, update(test.name), got)

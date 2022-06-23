@@ -7,6 +7,7 @@ import (
 
 	"github.com/goware/urlx"
 	"github.com/inconshreveable/log15"
+	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/api/internalapi"
@@ -42,7 +43,7 @@ func NewPhabricatorSource(svc *types.ExternalService, cf *httpcli.Factory) (*Pha
 
 // ListRepos returns all Phabricator repositories accessible to all connections configured
 // in Sourcegraph via the external services configuration.
-func (s *PhabricatorSource) ListRepos(ctx context.Context, results chan SourceResult) {
+func (s *PhabricatorSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	cli, err := s.client(ctx)
 	if err != nil {
 		results <- SourceResult{Source: s, Err: err}
@@ -63,7 +64,7 @@ func (s *PhabricatorSource) ListRepos(ctx context.Context, results chan SourceRe
 				continue
 			}
 
-			repo, err := s.makeRepo(r)
+			repo, err := s.makeRepo(logger, r)
 			if err != nil {
 				results <- SourceResult{Source: s, Err: err}
 				return
@@ -82,7 +83,7 @@ func (s *PhabricatorSource) ExternalServices() types.ExternalServices {
 	return types.ExternalServices{s.svc}
 }
 
-func (s *PhabricatorSource) makeRepo(repo *phabricator.Repo) (*types.Repo, error) {
+func (s *PhabricatorSource) makeRepo(logger log.Logger, repo *phabricator.Repo) (*types.Repo, error) {
 	var external []*phabricator.URI
 	builtin := make(map[string]*phabricator.URI)
 
@@ -122,7 +123,7 @@ func (s *PhabricatorSource) makeRepo(repo *phabricator.Repo) (*types.Repo, error
 	}
 
 	if cloneURL == "" {
-		log15.Warn("unable to construct clone URL for repo", "name", name, "phabricator_id", repo.PHID)
+		logger.Warn("unable to construct clone URL for repo", log.String("name", name), log.String("phabricator_id", repo.PHID))
 	}
 
 	if name == "" {
@@ -180,7 +181,7 @@ func (s *PhabricatorSource) client(ctx context.Context) (*phabricator.Client, er
 }
 
 // RunPhabricatorRepositorySyncWorker runs the worker that syncs repositories from Phabricator to Sourcegraph
-func RunPhabricatorRepositorySyncWorker(ctx context.Context, s Store) {
+func RunPhabricatorRepositorySyncWorker(logger log.Logger, ctx context.Context, s Store) {
 	cf := httpcli.ExternalClientFactory
 
 	for {
@@ -188,17 +189,17 @@ func RunPhabricatorRepositorySyncWorker(ctx context.Context, s Store) {
 			Kinds: []string{extsvc.KindPhabricator},
 		})
 		if err != nil {
-			log15.Error("unable to fetch Phabricator connections", "err", err)
+			logger.Error("unable to fetch Phabricator connections", log.Error(err))
 		}
 
 		for _, phab := range phabs {
 			src, err := NewPhabricatorSource(phab, cf)
 			if err != nil {
-				log15.Error("failed to instantiate PhabricatorSource", "err", err)
+				logger.Error("failed to instantiate PhabricatorSource", log.Error(err))
 				continue
 			}
 
-			repos, err := listAll(ctx, src)
+			repos, err := listAll(logger, ctx, src)
 			if err != nil {
 				log15.Error("Error fetching Phabricator repos", "err", err)
 				continue

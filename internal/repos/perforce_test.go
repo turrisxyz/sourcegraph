@@ -9,6 +9,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/inconshreveable/log15"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/testutil"
 	"github.com/sourcegraph/sourcegraph/internal/types"
@@ -17,6 +19,7 @@ import (
 )
 
 func TestPerforceSource_ListRepos(t *testing.T) {
+	logger := logtest.Scoped(t)
 	assertAllReposListed := func(want []string) typestest.ReposAssertion {
 		return func(t testing.TB, rs types.Repos) {
 			t.Helper()
@@ -73,7 +76,7 @@ func TestPerforceSource_ListRepos(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			repos, err := listAll(context.Background(), perforceSrc)
+			repos, err := listAll(logger, context.Background(), perforceSrc)
 
 			if have, want := fmt.Sprint(err), tc.err; have != want {
 				t.Errorf("error:\nhave: %q\nwant: %q", have, want)

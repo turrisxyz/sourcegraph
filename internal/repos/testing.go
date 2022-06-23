@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/sourcegraph/log"
+
 	"github.com/sourcegraph/sourcegraph/internal/types"
 	"github.com/sourcegraph/sourcegraph/internal/types/typestest"
 	"github.com/sourcegraph/sourcegraph/lib/errors"
@@ -35,7 +37,7 @@ func NewFakeSource(svc *types.ExternalService, err error, rs ...*types.Repo) *Fa
 
 // ListRepos returns the Repos that FakeSource was instantiated with
 // as well as the error, if any.
-func (s FakeSource) ListRepos(ctx context.Context, results chan SourceResult) {
+func (s FakeSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	if s.err != nil {
 		results <- SourceResult{Source: s, Err: s.err}
 		return

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/inconshreveable/log15"
+	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/backend"
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/envvar"
@@ -19,9 +20,7 @@ import (
 	"github.com/sourcegraph/sourcegraph/lib/errors"
 )
 
-var (
-	cf = httpcli.ExternalClientFactory
-)
+var cf = httpcli.ExternalClientFactory
 
 type affiliatedRepositoriesConnection struct {
 	userID   int32
@@ -36,7 +35,7 @@ type affiliatedRepositoriesConnection struct {
 	codeHostErrors []string
 }
 
-func (a *affiliatedRepositoriesConnection) getNodesAndErrors(ctx context.Context) (*affiliatedRepositoriesConnection, error) {
+func (a *affiliatedRepositoriesConnection) getNodesAndErrors(logger log.Logger, ctx context.Context) (*affiliatedRepositoriesConnection, error) {
 	a.once.Do(func() {
 		var (
 			svcs []*types.ExternalService
@@ -82,7 +81,7 @@ func (a *affiliatedRepositoriesConnection) getNodesAndErrors(ctx context.Context
 		)
 		for _, svc := range svcs {
 			svcsByID[svc.ID] = svc
-			src, err := repos.NewSource(ctx, a.db, svc, cf)
+			src, err := repos.NewSource(logger, ctx, a.db, svc, cf)
 			if err != nil {
 				a.err = err
 				return
@@ -168,8 +167,8 @@ func (a *affiliatedRepositoriesConnection) getNodesAndErrors(ctx context.Context
 	return a, a.err
 }
 
-func (a *affiliatedRepositoriesConnection) Nodes(ctx context.Context) ([]*codeHostRepositoryResolver, error) {
-	nodesAndErrors, _ := a.getNodesAndErrors(ctx)
+func (a *affiliatedRepositoriesConnection) Nodes(logger log.Logger, ctx context.Context) ([]*codeHostRepositoryResolver, error) {
+	nodesAndErrors, _ := a.getNodesAndErrors(logger, ctx)
 
 	if envvar.SourcegraphDotComMode() && a.orgID != 0 {
 		a.db.OrgStats().Upsert(ctx, a.orgID, int32(len(a.nodes)))
@@ -177,8 +176,8 @@ func (a *affiliatedRepositoriesConnection) Nodes(ctx context.Context) ([]*codeHo
 	return nodesAndErrors.nodes, nil
 }
 
-func (a *affiliatedRepositoriesConnection) CodeHostErrors(ctx context.Context) ([]string, error) {
-	nodesAndErrors, err := a.getNodesAndErrors(ctx)
+func (a *affiliatedRepositoriesConnection) CodeHostErrors(logger log.Logger, ctx context.Context) ([]string, error) {
+	nodesAndErrors, err := a.getNodesAndErrors(logger, ctx)
 	if err != nil {
 		return a.codeHostErrors, err
 	}

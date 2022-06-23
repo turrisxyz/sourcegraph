@@ -34,6 +34,7 @@ import (
 )
 
 func TestSources_ListRepos(t *testing.T) {
+	logger := logtest.Scoped(t)
 	conf.Mock(&conf.Unified{
 		ServiceConnectionConfig: conftypes.ServiceConnections{
 			GitServers: []string{"127.0.0.1:3178"},
@@ -619,9 +620,8 @@ func TestSources_ListRepos(t *testing.T) {
 				cf, save := newClientFactory(t, name)
 				defer save(t)
 
-				logger := logtest.Scoped(t)
 				obs := ObservedSource(logger, NewSourceMetrics())
-				src, err := NewSourcer(database.NewMockDB(), cf, obs)(tc.ctx, svc)
+				src, err := NewSourcer(logger, database.NewMockDB(), cf, obs)(tc.ctx, svc)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -631,7 +631,7 @@ func TestSources_ListRepos(t *testing.T) {
 					ctx = context.Background()
 				}
 
-				repos, err := listAll(ctx, src)
+				repos, err := listAll(logger, ctx, src)
 				if have, want := fmt.Sprint(err), tc.err; have != want {
 					t.Errorf("error:\nhave: %q\nwant: %q", have, want)
 				}

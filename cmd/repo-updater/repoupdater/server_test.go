@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sourcegraph/log"
+
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/opentracing/opentracing-go"
@@ -816,7 +818,8 @@ func TestExternalServiceValidate_ValidatesToken(t *testing.T) {
 			return nil
 		},
 	}
-	err := externalServiceValidate(ctx, protocol.ExternalServiceSyncRequest{}, src)
+	logger := logtest.Scoped(t)
+	err := externalServiceValidate(logger, ctx, protocol.ExternalServiceSyncRequest{}, src)
 	if err != nil {
 		t.Errorf("expected nil, got %v", err)
 	}
@@ -834,7 +837,7 @@ var (
 	_ repos.UserSource = &testSource{}
 )
 
-func (t testSource) ListRepos(ctx context.Context, results chan repos.SourceResult) {
+func (t testSource) ListRepos(logger log.Logger, ctx context.Context, results chan repos.SourceResult) {
 }
 
 func (t testSource) ExternalServices() types.ExternalServices {

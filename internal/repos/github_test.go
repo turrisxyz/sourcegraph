@@ -51,6 +51,7 @@ func TestExampleRepositoryQuerySplit(t *testing.T) {
 }
 
 func TestGithubSource_GetRepo(t *testing.T) {
+	logger := logtest.Scoped(t)
 	testCases := []struct {
 		name          string
 		nameWithOwner string
@@ -131,7 +132,7 @@ func TestGithubSource_GetRepo(t *testing.T) {
 				}),
 			}
 
-			githubSrc, err := NewGithubSource(database.NewMockExternalServiceStore(), svc, cf)
+			githubSrc, err := NewGithubSource(logger, database.NewMockExternalServiceStore(), svc, cf)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -157,7 +158,7 @@ func setUpRcache(t *testing.T) {
 
 func TestPublicRepos_PaginationTerminatesGracefully(t *testing.T) {
 	setUpRcache(t)
-
+	logger := logtest.Scoped(t)
 	fixtureName := "GITHUB-ENTERPRISE/list-public-repos"
 	gheToken := prepareGheToken(t, fixtureName)
 
@@ -172,7 +173,7 @@ func TestPublicRepos_PaginationTerminatesGracefully(t *testing.T) {
 	factory, save := newClientFactory(t, fixtureName)
 	defer save(t)
 
-	githubSrc, err := NewGithubSource(database.NewMockExternalServiceStore(), service, factory)
+	githubSrc, err := NewGithubSource(logger, database.NewMockExternalServiceStore(), service, factory)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,6 +201,7 @@ func prepareGheToken(t *testing.T, fixtureName string) string {
 }
 
 func TestGithubSource_GetRepo_Enterprise(t *testing.T) {
+	logger := logtest.Scoped(t)
 	testCases := []struct {
 		name          string
 		nameWithOwner string
@@ -253,7 +255,6 @@ func TestGithubSource_GetRepo_Enterprise(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 		tc.name = "GITHUB-ENTERPRISE/" + tc.name
-
 		t.Run(tc.name, func(t *testing.T) {
 			conf.Mock(&conf.Unified{
 				SiteConfiguration: schema.SiteConfiguration{
@@ -286,7 +287,7 @@ func TestGithubSource_GetRepo_Enterprise(t *testing.T) {
 			cf, save := newClientFactory(t, tc.name)
 			defer save(t)
 
-			githubSrc, err := NewGithubSource(database.NewMockExternalServiceStore(), svc, cf)
+			githubSrc, err := NewGithubSource(logger, database.NewMockExternalServiceStore(), svc, cf)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -308,6 +309,7 @@ func TestGithubSource_GetRepo_Enterprise(t *testing.T) {
 }
 
 func TestGithubSource_makeRepo(t *testing.T) {
+	logger := logtest.Scoped(t)
 	b, err := os.ReadFile(filepath.Join("testdata", "github-repos.json"))
 	if err != nil {
 		t.Fatal(err)
@@ -348,7 +350,7 @@ func TestGithubSource_makeRepo(t *testing.T) {
 			lg := log15.New()
 			lg.SetHandler(log15.DiscardHandler())
 
-			s, err := newGithubSource(database.NewMockExternalServiceStore(), &svc, test.schema, nil)
+			s, err := newGithubSource(logger, database.NewMockExternalServiceStore(), &svc, test.schema, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -390,6 +392,7 @@ func TestMatchOrg(t *testing.T) {
 }
 
 func TestGithubSource_ListRepos(t *testing.T) {
+	logger := logtest.Scoped(t)
 	assertAllReposListed := func(want []string) typestest.ReposAssertion {
 		return func(t testing.TB, rs types.Repos) {
 			t.Helper()
@@ -545,12 +548,12 @@ func TestGithubSource_ListRepos(t *testing.T) {
 				Config: marshalJSON(t, tc.conf),
 			}
 
-			githubSrc, err := NewGithubSource(database.NewMockExternalServiceStore(), svc, cf)
+			githubSrc, err := NewGithubSource(logger, database.NewMockExternalServiceStore(), svc, cf)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			repos, err := listAll(context.Background(), githubSrc)
+			repos, err := listAll(logger, context.Background(), githubSrc)
 			if have, want := fmt.Sprint(err), tc.err; have != want {
 				t.Errorf("error:\nhave: %q\nwant: %q", have, want)
 			}
@@ -572,6 +575,7 @@ func githubGraphQLFailureMiddleware(cli httpcli.Doer) httpcli.Doer {
 }
 
 func TestGithubSource_WithAuthenticator(t *testing.T) {
+	logger := logtest.Scoped(t)
 	svc := &types.ExternalService{
 		Kind: extsvc.KindGitHub,
 		Config: marshalJSON(t, &schema.GitHubConnection{
@@ -580,7 +584,7 @@ func TestGithubSource_WithAuthenticator(t *testing.T) {
 		}),
 	}
 
-	githubSrc, err := NewGithubSource(database.NewMockExternalServiceStore(), svc, nil)
+	githubSrc, err := NewGithubSource(logger, database.NewMockExternalServiceStore(), svc, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -620,6 +624,7 @@ func TestGithubSource_WithAuthenticator(t *testing.T) {
 }
 
 func TestGithubSource_excludes_disabledAndLocked(t *testing.T) {
+	logger := logtest.Scoped(t)
 	svc := &types.ExternalService{
 		Kind: extsvc.KindGitHub,
 		Config: marshalJSON(t, &schema.GitHubConnection{
@@ -628,7 +633,7 @@ func TestGithubSource_excludes_disabledAndLocked(t *testing.T) {
 		}),
 	}
 
-	githubSrc, err := NewGithubSource(database.NewMockExternalServiceStore(), svc, nil)
+	githubSrc, err := NewGithubSource(logger, database.NewMockExternalServiceStore(), svc, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -645,6 +650,7 @@ func TestGithubSource_excludes_disabledAndLocked(t *testing.T) {
 }
 
 func TestGithubSource_GetVersion(t *testing.T) {
+	logger := logtest.Scoped(t)
 	t.Run("github.com", func(t *testing.T) {
 		svc := &types.ExternalService{
 			Kind: extsvc.KindGitHub,
@@ -653,7 +659,7 @@ func TestGithubSource_GetVersion(t *testing.T) {
 			}),
 		}
 
-		githubSrc, err := NewGithubSource(database.NewMockExternalServiceStore(), svc, nil)
+		githubSrc, err := NewGithubSource(logger, database.NewMockExternalServiceStore(), svc, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -688,7 +694,7 @@ func TestGithubSource_GetVersion(t *testing.T) {
 			}),
 		}
 
-		githubSrc, err := NewGithubSource(database.NewMockExternalServiceStore(), svc, cf)
+		githubSrc, err := NewGithubSource(logger, database.NewMockExternalServiceStore(), svc, cf)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -782,6 +788,8 @@ func TestGetOrRenewGitHubAppInstallationAccessToken(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now()
 
+	logger := logtest.Scoped(t)
+
 	baseURL, err := url.Parse(schema.DefaultGitHubURL)
 	require.NoError(t, err)
 
@@ -864,7 +872,7 @@ func TestGetOrRenewGitHubAppInstallationAccessToken(t *testing.T) {
 				TokenExpiresAt: test.tokenExpiresAt,
 			}
 
-			gotToken, err := GetOrRenewGitHubAppInstallationAccessToken(ctx, externalServices, svc, client, 1234)
+			gotToken, err := GetOrRenewGitHubAppInstallationAccessToken(logger, ctx, externalServices, svc, client, 1234)
 			require.NoError(t, err)
 			assert.Equal(t, wantToken, gotToken)
 

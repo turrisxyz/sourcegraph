@@ -78,10 +78,13 @@ type fakeVersionSource struct {
 	es types.ExternalServices
 }
 
-func (f *fakeVersionSource) ListRepos(ctx context.Context, res chan repos.SourceResult) {}
+func (f *fakeVersionSource) ListRepos(logger log.Logger, ctx context.Context, res chan repos.SourceResult) {
+}
+
 func (f *fakeVersionSource) ExternalServices() types.ExternalServices {
 	return f.es
 }
+
 func (f *fakeVersionSource) Version(context.Context) (string, error) {
 	return f.version, f.err
 }

@@ -7,6 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
@@ -16,8 +18,10 @@ import (
 )
 
 func TestNewAuthzProviders(t *testing.T) {
+	logger := logtest.Scoped(t)
 	t.Run("no authorization", func(t *testing.T) {
 		providers, problems, warnings := NewAuthzProviders(
+			logger,
 			database.NewMockExternalServiceStore(),
 			[]*ExternalConnection{
 				{
@@ -42,7 +46,7 @@ func TestNewAuthzProviders(t *testing.T) {
 	})
 
 	t.Run("no matching auth provider", func(t *testing.T) {
-		providers, problems, warnings := NewAuthzProviders(
+		providers, problems, warnings := NewAuthzProviders(logger,
 			database.NewMockExternalServiceStore(),
 			[]*ExternalConnection{
 				{
@@ -75,6 +79,7 @@ func TestNewAuthzProviders(t *testing.T) {
 	t.Run("matching auth provider found", func(t *testing.T) {
 		t.Run("default case", func(t *testing.T) {
 			providers, problems, warnings := NewAuthzProviders(
+				logger,
 				database.NewMockExternalServiceStore(),
 				[]*ExternalConnection{
 					{
@@ -103,6 +108,7 @@ func TestNewAuthzProviders(t *testing.T) {
 
 		t.Run("groups cache enabled, but not allowGroupsPermissionsSync", func(t *testing.T) {
 			providers, problems, warnings := NewAuthzProviders(
+				logger,
 				database.NewMockExternalServiceStore(),
 				[]*ExternalConnection{
 					{
@@ -141,6 +147,7 @@ func TestNewAuthzProviders(t *testing.T) {
 				return []string{"read:org"}, nil
 			}
 			providers, problems, warnings := NewAuthzProviders(
+				logger,
 				database.NewMockExternalServiceStore(),
 				[]*ExternalConnection{
 					{
@@ -191,6 +198,7 @@ func TestNewAuthzProviders(t *testing.T) {
 			defer conf.Mock(nil)
 
 			providers, problems, warnings := NewAuthzProviders(
+				logger,
 				database.NewMockExternalServiceStore(),
 				[]*ExternalConnection{
 					{

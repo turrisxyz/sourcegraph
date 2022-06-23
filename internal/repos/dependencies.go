@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/sourcegraph/log"
+
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 
@@ -32,7 +34,7 @@ type dependenciesSource interface {
 
 var _ Source = &DependenciesSource{}
 
-func (s *DependenciesSource) ListRepos(ctx context.Context, results chan SourceResult) {
+func (s *DependenciesSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	deps, err := s.configDependencies(s.configDeps)
 	if err != nil {
 		results <- SourceResult{Source: s, Err: err}

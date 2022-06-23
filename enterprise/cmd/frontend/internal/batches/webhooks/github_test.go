@@ -17,6 +17,8 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	gh "github.com/google/go-github/v43/github"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/cmd/frontend/webhooks"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/sources"
 	"github.com/sourcegraph/sourcegraph/enterprise/internal/batches/store"
@@ -38,6 +40,7 @@ import (
 // Run from integration_test.go
 func testGitHubWebhook(db database.DB, userID int32) func(*testing.T) {
 	return func(t *testing.T) {
+		logger := logtest.Scoped(t)
 		now := timeutil.Now()
 		clock := func() time.Time { return now }
 
@@ -73,7 +76,7 @@ func testGitHubWebhook(db database.DB, userID int32) func(*testing.T) {
 			t.Fatal(t)
 		}
 
-		githubSrc, err := repos.NewGithubSource(db.ExternalServices(), extSvc, cf)
+		githubSrc, err := repos.NewGithubSource(logger, db.ExternalServices(), extSvc, cf)
 		if err != nil {
 			t.Fatal(t)
 		}
@@ -202,7 +205,7 @@ func testGitHubWebhook(db database.DB, userID int32) func(*testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					err = os.WriteFile(fixtureFile, data, 0666)
+					err = os.WriteFile(fixtureFile, data, 0o666)
 					if err != nil {
 						t.Fatal(err)
 					}

@@ -10,7 +10,8 @@ import (
 	"github.com/sourcegraph/sourcegraph/schema"
 )
 
-var ValidateExternalServiceConfig = database.MakeValidateExternalServiceConfigFunc([]func(*types.GitHubConnection) error{github.ValidateAuthz},
+var ValidateExternalServiceConfig = database.MakeValidateExternalServiceConfigFunc(
+	[]func(*types.GitHubConnection) error{github.ValidateAuthz},
 	[]func(*schema.GitLabConnection, []schema.AuthProviders) error{gitlab.ValidateAuthz},
 	[]func(*schema.BitbucketServerConnection) error{bitbucketserver.ValidateAuthz},
 	[]func(connection *schema.PerforceConnection) error{perforce.ValidateAuthz})

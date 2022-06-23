@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/inconshreveable/log15"
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/internal/testutil"
 
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
@@ -13,6 +15,7 @@ import (
 )
 
 func TestPagureSource_ListRepos(t *testing.T) {
+	logger := logtest.Scoped(t)
 	conf := &schema.PagureConnection{
 		Url:     "https://src.fedoraproject.org",
 		Pattern: "ac*",
@@ -35,7 +38,7 @@ func TestPagureSource_ListRepos(t *testing.T) {
 
 	src.perPage = 25 // 2 pages for 47 results
 
-	repos, err := listAll(context.Background(), src)
+	repos, err := listAll(logger, context.Background(), src)
 	if err != nil {
 		t.Fatal(err)
 	}

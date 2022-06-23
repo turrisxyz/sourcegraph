@@ -6,7 +6,7 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/inconshreveable/log15"
+	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/conf/reposource"
@@ -76,8 +76,8 @@ func newBitbucketCloudSource(svc *types.ExternalService, c *schema.BitbucketClou
 
 // ListRepos returns all Bitbucket Cloud repositories accessible to all connections configured
 // in Sourcegraph via the external services configuration.
-func (s BitbucketCloudSource) ListRepos(ctx context.Context, results chan SourceResult) {
-	s.listAllRepos(ctx, results)
+func (s BitbucketCloudSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
+	s.listAllRepos(logger, ctx, results)
 }
 
 // ExternalServices returns a singleton slice containing the external service.
@@ -85,7 +85,7 @@ func (s BitbucketCloudSource) ExternalServices() types.ExternalServices {
 	return types.ExternalServices{s.svc}
 }
 
-func (s BitbucketCloudSource) makeRepo(r *bitbucketcloud.Repo) *types.Repo {
+func (s BitbucketCloudSource) makeRepo(logger log.Logger, r *bitbucketcloud.Repo) *types.Repo {
 	host, err := url.Parse(s.config.Url)
 	if err != nil {
 		// This should never happen
@@ -116,7 +116,7 @@ func (s BitbucketCloudSource) makeRepo(r *bitbucketcloud.Repo) *types.Repo {
 		Sources: map[string]*types.SourceInfo{
 			urn: {
 				ID:       urn,
-				CloneURL: s.remoteURL(r),
+				CloneURL: s.remoteURL(logger, r),
 			},
 		},
 		Metadata: r,
@@ -127,7 +127,7 @@ func (s BitbucketCloudSource) makeRepo(r *bitbucketcloud.Repo) *types.Repo {
 //
 // note: this used to contain credentials but that is no longer the case
 // if you need to get an authenticated clone url use repos.CloneURL
-func (s *BitbucketCloudSource) remoteURL(repo *bitbucketcloud.Repo) string {
+func (s *BitbucketCloudSource) remoteURL(logger log.Logger, repo *bitbucketcloud.Repo) string {
 	if s.config.GitURLType == "ssh" {
 		return fmt.Sprintf("git@%s:%s.git", s.config.Url, repo.FullName)
 	}
@@ -140,7 +140,7 @@ func (s *BitbucketCloudSource) remoteURL(repo *bitbucketcloud.Repo) string {
 
 	httpsURL, err := repo.Links.Clone.HTTPS()
 	if err != nil {
-		log15.Warn("Error adding authentication to Bitbucket Cloud repository Git remote URL.", "url", repo.Links.Clone, "error", err)
+		logger.Warn("Error adding authentication to Bitbucket Cloud repository Git remote URL.", log.String("url", fmt.Sprintf("%v", repo.Links.Clone)), log.Error(err))
 		return fallbackURL
 	}
 	return httpsURL
@@ -150,7 +150,7 @@ func (s *BitbucketCloudSource) excludes(r *bitbucketcloud.Repo) bool {
 	return s.exclude(r.FullName) || s.exclude(r.UUID)
 }
 
-func (s *BitbucketCloudSource) listAllRepos(ctx context.Context, results chan SourceResult) {
+func (s *BitbucketCloudSource) listAllRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	type batch struct {
 		repos []*bitbucketcloud.Repo
 		err   error
@@ -217,7 +217,7 @@ func (s *BitbucketCloudSource) listAllRepos(ctx context.Context, results chan So
 			}
 
 			if !seen[repo.UUID] && !s.excludes(repo) {
-				results <- SourceResult{Source: s, Repo: s.makeRepo(repo)}
+				results <- SourceResult{Source: s, Repo: s.makeRepo(logger, repo)}
 				seen[repo.UUID] = true
 			}
 		}
@@ -242,7 +242,6 @@ func (s *BitbucketCloudSource) WithAuthenticator(a auth.Authenticator) (Source, 
 	sc.client = sc.client.WithAuthenticator(a)
 
 	return &sc, nil
-
 }
 
 // ValidateAuthenticator validates the currently set authenticator is usable.

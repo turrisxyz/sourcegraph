@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/inconshreveable/log15"
+	"github.com/sourcegraph/log"
 
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/conf/reposource"
@@ -36,15 +36,15 @@ var _ VersionSource = &BitbucketServerSource{}
 
 // NewBitbucketServerSource returns a new BitbucketServerSource from the given external service.
 // rl is optional
-func NewBitbucketServerSource(svc *types.ExternalService, cf *httpcli.Factory) (*BitbucketServerSource, error) {
+func NewBitbucketServerSource(logger log.Logger, svc *types.ExternalService, cf *httpcli.Factory) (*BitbucketServerSource, error) {
 	var c schema.BitbucketServerConnection
 	if err := jsonc.Unmarshal(svc.Config, &c); err != nil {
 		return nil, errors.Errorf("external service id=%d config error: %s", svc.ID, err)
 	}
-	return newBitbucketServerSource(svc, &c, cf)
+	return newBitbucketServerSource(logger, svc, &c, cf)
 }
 
-func newBitbucketServerSource(svc *types.ExternalService, c *schema.BitbucketServerConnection, cf *httpcli.Factory) (*BitbucketServerSource, error) {
+func newBitbucketServerSource(logger log.Logger, svc *types.ExternalService, c *schema.BitbucketServerConnection, cf *httpcli.Factory) (*BitbucketServerSource, error) {
 	if cf == nil {
 		cf = httpcli.ExternalClientFactory
 	}
@@ -85,8 +85,8 @@ func newBitbucketServerSource(svc *types.ExternalService, c *schema.BitbucketSer
 
 // ListRepos returns all BitbucketServer repositories accessible to all connections configured
 // in Sourcegraph via the external services configuration.
-func (s BitbucketServerSource) ListRepos(ctx context.Context, results chan SourceResult) {
-	s.listAllRepos(ctx, results)
+func (s BitbucketServerSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
+	s.listAllRepos(logger, ctx, results)
 }
 
 func (s BitbucketServerSource) WithAuthenticator(a auth.Authenticator) (Source, error) {
@@ -190,7 +190,7 @@ func (s *BitbucketServerSource) excludes(r *bitbucketserver.Repo) bool {
 	return false
 }
 
-func (s *BitbucketServerSource) listAllRepos(ctx context.Context, results chan SourceResult) {
+func (s *BitbucketServerSource) listAllRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	// "archived" label is a convention used at some customers for indicating a
 	// repository is archived (like github's archived state). This is not returned in
 	// the normal repository listing endpoints, so we need to fetch it separately.
@@ -229,7 +229,7 @@ func (s *BitbucketServerSource) listAllRepos(ctx context.Context, results chan S
 				// TODO(tsenart): When implementing dry-run, reconsider alternatives to return
 				// 404 errors on external service config validation.
 				if bitbucketserver.IsNotFound(err) {
-					log15.Warn("skipping missing bitbucketserver.repos entry:", "name", name, "err", err)
+					logger.Warn("skipping missing bitbucketserver.repos entry:", log.String("name", name), log.Error(err))
 					continue
 				}
 				ch <- batch{err: errors.Wrapf(err, "bitbucketserver.repos: name: %q", name)}

@@ -6,6 +6,8 @@ import (
 
 	"github.com/inconshreveable/log15"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/httpcli"
 	"github.com/sourcegraph/sourcegraph/internal/testutil"
@@ -14,6 +16,7 @@ import (
 )
 
 func TestGerritSource_ListRepos(t *testing.T) {
+	logger := logtest.Scoped(t)
 	conf := &schema.GerritConnection{
 		Url: "https://gerrit-review.googlesource.com",
 	}
@@ -35,7 +38,7 @@ func TestGerritSource_ListRepos(t *testing.T) {
 
 	src.perPage = 25
 
-	repos, err := listAll(context.Background(), src)
+	repos, err := listAll(logger, context.Background(), src)
 	if err != nil {
 		t.Fatal(err)
 	}

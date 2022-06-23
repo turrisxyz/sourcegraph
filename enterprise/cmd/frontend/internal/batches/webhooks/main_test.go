@@ -10,6 +10,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/sourcegraph/log"
+
 	btypes "github.com/sourcegraph/sourcegraph/enterprise/internal/batches/types"
 	"github.com/sourcegraph/sourcegraph/internal/repos"
 	"github.com/sourcegraph/sourcegraph/internal/types"
@@ -17,10 +19,10 @@ import (
 
 var update = flag.Bool("update", false, "update testdata")
 
-func getSingleRepo(ctx context.Context, bitbucketSource *repos.BitbucketServerSource, name string) (*types.Repo, error) {
+func getSingleRepo(logger log.Logger, ctx context.Context, bitbucketSource *repos.BitbucketServerSource, name string) (*types.Repo, error) {
 	repoChan := make(chan repos.SourceResult)
 	go func() {
-		bitbucketSource.ListRepos(ctx, repoChan)
+		bitbucketSource.ListRepos(logger, ctx, repoChan)
 		close(repoChan)
 	}()
 

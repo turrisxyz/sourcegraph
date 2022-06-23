@@ -4,6 +4,8 @@ import (
 	"context"
 	"strings"
 
+	"github.com/sourcegraph/log"
+
 	"github.com/sourcegraph/sourcegraph/internal/api"
 	"github.com/sourcegraph/sourcegraph/internal/conf/reposource"
 	"github.com/sourcegraph/sourcegraph/internal/database"
@@ -67,7 +69,7 @@ func NewGitoliteSource(db database.DB, svc *types.ExternalService, cf *httpcli.F
 
 // ListRepos returns all Gitolite repositories accessible to all connections configured
 // in Sourcegraph via the external services configuration.
-func (s *GitoliteSource) ListRepos(ctx context.Context, results chan SourceResult) {
+func (s *GitoliteSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	all, err := s.cli.ListGitolite(ctx, s.conn.Host)
 	if err != nil {
 		results <- SourceResult{Source: s, Err: err}

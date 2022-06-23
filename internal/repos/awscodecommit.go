@@ -5,13 +5,16 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/sourcegraph/log"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	"github.com/aws/aws-sdk-go-v2/config"
 	awscredentials "github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/codecommit"
-	"github.com/sourcegraph/sourcegraph/lib/errors"
 	"golang.org/x/net/http2"
+
+	"github.com/sourcegraph/sourcegraph/lib/errors"
 
 	"github.com/sourcegraph/sourcegraph/internal/conf/reposource"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc/awscodecommit"
@@ -110,8 +113,8 @@ func newAWSCodeCommitSource(svc *types.ExternalService, c *schema.AWSCodeCommitC
 // ListRepos returns all AWS Code Commit repositories accessible to all
 // connections configured in Sourcegraph via the external services
 // configuration.
-func (s *AWSCodeCommitSource) ListRepos(ctx context.Context, results chan SourceResult) {
-	s.listAllRepositories(ctx, results)
+func (s *AWSCodeCommitSource) ListRepos(logger log.Logger, ctx context.Context, results chan SourceResult) {
+	s.listAllRepositories(logger, ctx, results)
 }
 
 // ExternalServices returns a singleton slice containing the external service.
@@ -138,7 +141,7 @@ func (s *AWSCodeCommitSource) makeRepo(r *awscodecommit.Repository) *types.Repo 
 	}
 }
 
-func (s *AWSCodeCommitSource) listAllRepositories(ctx context.Context, results chan SourceResult) {
+func (s *AWSCodeCommitSource) listAllRepositories(logger log.Logger, ctx context.Context, results chan SourceResult) {
 	var nextToken string
 	for {
 		batch, token, err := s.client.ListRepositories(ctx, nextToken)

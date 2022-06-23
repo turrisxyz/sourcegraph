@@ -548,7 +548,7 @@ func (s *Syncer) SyncExternalService(
 	results := make(chan SourceResult)
 
 	go func() {
-		src.ListRepos(ctx, results)
+		src.ListRepos(logger, ctx, results)
 		close(results)
 	}()
 

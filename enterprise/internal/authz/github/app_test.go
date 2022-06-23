@@ -14,6 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/sourcegraph/log/logtest"
+
 	"github.com/sourcegraph/sourcegraph/internal/database"
 	"github.com/sourcegraph/sourcegraph/internal/extsvc"
 	"github.com/sourcegraph/sourcegraph/internal/types"
@@ -29,6 +31,7 @@ func (c *mockDoer) Do(r *http.Request) (*http.Response, error) {
 }
 
 func TestNewAppProvider(t *testing.T) {
+	logger := logtest.Scoped(t)
 	srvHit := false
 	doer := &mockDoer{
 		do: func(r *http.Request) (*http.Response, error) {
@@ -81,7 +84,7 @@ func TestNewAppProvider(t *testing.T) {
 			Config: string(config),
 		}
 
-		provider, err := newAppProvider(database.NewMockExternalServiceStore(), svc, "", baseURL, "1234", bogusKey, 1234, doer)
+		provider, err := newAppProvider(logger, database.NewMockExternalServiceStore(), svc, "", baseURL, "1234", bogusKey, 1234, doer)
 		require.NoError(t, err)
 
 		cli, err := provider.client()
@@ -98,8 +101,7 @@ func TestNewAppProvider(t *testing.T) {
 		var svc *types.ExternalService
 
 		// just validate that a new provider can be created for validation if svc is nil
-		_, err = newAppProvider(database.NewMockExternalServiceStore(), svc, "", baseURL, "1234", bogusKey, 1234, doer)
+		_, err = newAppProvider(logger, database.NewMockExternalServiceStore(), svc, "", baseURL, "1234", bogusKey, 1234, doer)
 		require.NoError(t, err)
 	})
-
 }

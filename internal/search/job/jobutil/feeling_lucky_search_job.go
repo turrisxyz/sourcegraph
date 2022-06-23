@@ -2,10 +2,12 @@ package jobutil
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
 	"github.com/go-enry/go-enry/v2"
+	"github.com/inconshreveable/log15"
 	"github.com/opentracing/opentracing-go/log"
 	"github.com/sourcegraph/sourcegraph/internal/search"
 	alertobserver "github.com/sourcegraph/sourcegraph/internal/search/alert"
@@ -50,6 +52,7 @@ func (f *FeelingLuckySearchJob) Run(ctx context.Context, clients job.RuntimeClie
 
 	stream := streaming.StreamFunc(func(event streaming.SearchEvent) {
 		mux.Lock()
+		log15.Info("Dedupe stream sees", "is", event.Results.ResultCount())
 
 		results := event.Results[:0]
 		for _, match := range event.Results {
@@ -84,14 +87,20 @@ func (f *FeelingLuckySearchJob) Run(ctx context.Context, clients job.RuntimeClie
 				continue
 			}
 
+			log15.Info("Running next...!")
 			alert, err = j.Run(ctx, clients, parentStream)
+			var lErr *alertobserver.ErrLuckyQueries
 			if ctx.Err() != nil {
+				log15.Info("Cancelled!")
 				// Cancellation or Deadline hit implies it's time to stop running jobs.
+				if errors.As(err, &lErr) {
+					// collected generated queries, we'll add it after this loop is done running.
+					generated.ProposedQueries = append(generated.ProposedQueries, lErr.ProposedQueries...)
+				}
 				errs = errors.Append(errs, generated)
 				return maxAlerter.Alert, errs
 			}
 
-			var lErr *alertobserver.ErrLuckyQueries
 			if errors.As(err, &lErr) {
 				// collected generated queries, we'll add it after this loop is done running.
 				generated.ProposedQueries = append(generated.ProposedQueries, lErr.ProposedQueries...)
@@ -462,8 +471,19 @@ type generatedSearchJob struct {
 	ProposedQuery *search.ProposedQuery
 }
 
-func (g *generatedSearchJob) Run(ctx context.Context, clients job.RuntimeClients, stream streaming.Sender) (*search.Alert, error) {
+func (g *generatedSearchJob) Run(ctx context.Context, clients job.RuntimeClients, parentStream streaming.Sender) (*search.Alert, error) {
+	log15.Info("generated", "is", g.ProposedQuery.Description)
+	var resultCount int
+	var mux sync.Mutex
+	stream := streaming.StreamFunc(func(event streaming.SearchEvent) {
+		mux.Lock()
+		resultCount += event.Results.ResultCount()
+		log15.Info("See result count", "is", resultCount)
+		mux.Unlock()
+		parentStream.Send(event)
+	})
 	alert, err := g.Child.Run(ctx, clients, stream)
+	g.ProposedQuery.Description = fmt.Sprintf("%s (%d results)", g.ProposedQuery.Description, resultCount)
 	err = errors.Append(err, &alertobserver.ErrLuckyQueries{
 		ProposedQueries: []*search.ProposedQuery{g.ProposedQuery},
 	})

@@ -87,18 +87,20 @@ func (f *FeelingLuckySearchJob) Run(ctx context.Context, clients job.RuntimeClie
 			}
 
 			alert, err = j.Run(ctx, clients, parentStream)
-			if ctx.Err() != nil {
-				// Cancellation or Deadline hit implies it's time to stop running jobs.
-				errs = errors.Append(errs, generated)
-				return maxAlerter.Alert, errs
-			}
-
 			var lErr *alertobserver.ErrLuckyQueries
 			if errors.As(err, &lErr) {
-				// collected generated queries, we'll add it after this loop is done running.
+				// collected generated queries, we'll add them when we're done.
 				generated.ProposedQueries = append(generated.ProposedQueries, lErr.ProposedQueries...)
 			} else {
 				errs = errors.Append(errs, err)
+			}
+
+			if ctx.Err() != nil {
+				// Cancellation or Deadline hit implies it's time to stop running jobs.
+				if len(generated.ProposedQueries) > 0 {
+					errs = errors.Append(errs, generated)
+				}
+				return maxAlerter.Alert, errs
 			}
 
 			maxAlerter.Add(alert)

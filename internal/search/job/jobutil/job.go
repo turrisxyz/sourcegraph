@@ -43,7 +43,11 @@ func NewPlanJob(inputs *run.SearchInputs, plan query.Plan) (job.Job, error) {
 	jobTree := NewOrJob(children...)
 
 	if inputs.PatternType == query.SearchTypeLucky {
-		jobTree = NewFeelingLuckySearchJob(jobTree, inputs, plan)
+		// Bound lucky search to the twice the normal amount of results,
+		// ensuring results are chunked off at the boundary of each
+		// generated query, and not midway through results, which
+		// otherwise messes up result reporting for generated queries.
+		jobTree = NewLimitJob(limits.DefaultMaxSearchResultsStreaming*2, NewFeelingLuckySearchJob(jobTree, inputs, plan))
 	}
 
 	return NewAlertJob(inputs, jobTree), nil

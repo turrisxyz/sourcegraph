@@ -2,7 +2,6 @@ package squirrel
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -35,10 +34,7 @@ func (squirrel *SquirrelService) getDefStarlark(ctx context.Context, node Node) 
 		}
 		path := getStringContents(swapNode(node, match.Captures[1].Node))
 		symbol := getStringContents(swapNode(node, match.Captures[2].Node))
-		fmt.Println("path", path)
-		fmt.Println(node.Node)
 		if nodeId(match.Captures[2].Node) != nodeId(node.Node) {
-			println("NOT SYMBOL")
 			return nil, nil
 		}
 
@@ -60,7 +56,6 @@ func (squirrel *SquirrelService) getDefStarlark(ctx context.Context, node Node) 
 			Repo:   node.RepoCommitPath.Repo,
 			Commit: node.RepoCommitPath.Commit,
 		}
-		fmt.Printf("%+v\n", destinationRepoCommitPath)
 
 		destinationRoot, err := squirrel.parse(ctx, destinationRepoCommitPath)
 		if err != nil {

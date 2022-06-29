@@ -29,22 +29,19 @@ public class BrowserAndLoadingPanel extends JLayeredPane {
             "Unfortunately, the browser is not available on your system. Try running the IDE with the default OpenJDK.");
 
         overlayPanel = new JBPanelWithEmptyText();
-        setLoading(true);
+        setState(State.LOADING);
 
         add(overlayPanel, 0);
         add(jcefPanel, 1);
     }
 
-    public void setBrowser(@NotNull SourcegraphJBCefBrowser browser) {
-        jcefPanel.add(browser.getComponent());
-    }
-
-    public void setLoading(boolean isLoading) {
+    public void setState(State state) {
         StatusText emptyText = overlayPanel.getEmptyText();
 
-        if (isLoading) {
+        isBrowserVisible = state == State.AUTHENTICATED || state == State.COULD_CONNECT_BUT_NOT_AUTHENTICATED;
+        if (state == State.LOADING) {
             emptyText.setText("Loading...");
-        } else {
+        } else if (state == State.COULD_NOT_CONNECT) {
             emptyText.setText("Could not connect to Sourcegraph.");
             emptyText.appendLine("Make sure your Sourcegraph URL and access token are correct to use search.");
             emptyText.appendLine("Click here to configure your Sourcegraph settings.",
@@ -52,6 +49,19 @@ public class BrowserAndLoadingPanel extends JLayeredPane {
                 __ -> ShowSettingsUtil.getInstance().showSettingsDialog(project, SettingsConfigurable.class)
             );
         }
+        revalidate();
+        repaint();
+    }
+
+    public void setBrowser(@NotNull SourcegraphJBCefBrowser browser) {
+        jcefPanel.add(browser.getComponent());
+    }
+
+    public enum State {
+        LOADING,
+        AUTHENTICATED,
+        COULD_NOT_CONNECT,
+        COULD_CONNECT_BUT_NOT_AUTHENTICATED
     }
 
     @Override
@@ -69,11 +79,5 @@ public class BrowserAndLoadingPanel extends JLayeredPane {
     @Override
     public Dimension getPreferredSize() {
         return getBounds().getSize();
-    }
-
-    public void setBrowserVisible(boolean browserVisible) {
-        isBrowserVisible = browserVisible;
-        revalidate();
-        repaint();
     }
 }

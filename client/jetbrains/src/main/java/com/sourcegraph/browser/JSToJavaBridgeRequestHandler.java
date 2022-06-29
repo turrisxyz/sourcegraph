@@ -97,7 +97,7 @@ public class JSToJavaBridgeRequestHandler {
                     return createSuccessResponse(null);
                 case "indicateFinishedLoading":
                     arguments = request.getAsJsonObject("arguments");
-                    ApplicationManager.getApplication().invokeLater(() -> findPopupPanel.indicateAuthenticationStatus(arguments.get("wasAuthenticationSuccessful").getAsBoolean()));
+                    ApplicationManager.getApplication().invokeLater(() -> findPopupPanel.indicateAuthenticationStatus(arguments.get("wasServerAccessSuccessful").getAsBoolean(), arguments.get("wasAuthenticationSuccessful").getAsBoolean()));
                     return createSuccessResponse(null);
                 default:
                     return createErrorResponse("Unknown action: '" + action + "'.", "No stack trace");

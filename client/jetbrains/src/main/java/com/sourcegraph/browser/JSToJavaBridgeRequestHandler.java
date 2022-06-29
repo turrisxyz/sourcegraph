@@ -96,7 +96,8 @@ public class JSToJavaBridgeRequestHandler {
                     }
                     return createSuccessResponse(null);
                 case "indicateFinishedLoading":
-                    findPopupPanel.setBrowserVisible(true);
+                    arguments = request.getAsJsonObject("arguments");
+                    findPopupPanel.indicateAuthenticationStatus(arguments.get("wasAuthenticationSuccessful").getAsBoolean());
                     return createSuccessResponse(null);
                 default:
                     return createErrorResponse("Unknown action: '" + action + "'.", "No stack trace");

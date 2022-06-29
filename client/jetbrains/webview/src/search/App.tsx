@@ -167,12 +167,12 @@ export const App: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
         [lastSearch, userQueryState.query, telemetryService]
     )
 
-    const [didInitialSubmit, setDidInitialSubmit] = useState(false)
+    const [lastInitialSubmitUser, setLastInitialSubmitUser] = useState<AuthenticatedUser | null>(null)
     useEffect(() => {
-        if (didInitialSubmit) {
+        if (lastInitialSubmitUser === authenticatedUser) {
             return
         }
-        setDidInitialSubmit(true)
+        setLastInitialSubmitUser(authenticatedUser)
         if (initialSearch !== null) {
             onSubmit({
                 caseSensitive: initialSearch.caseSensitive,
@@ -181,7 +181,7 @@ export const App: React.FunctionComponent<React.PropsWithChildren<Props>> = ({
                 forceNewSearch: true,
             })
         }
-    }, [initialSearch, onSubmit, didInitialSubmit])
+    }, [initialSearch, onSubmit, lastInitialSubmitUser, authenticatedUser])
 
     const statusBar = useMemo(
         () => <StatusBar progress={progress} progressState={progressState} authState={authState} />,

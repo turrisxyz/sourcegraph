@@ -23,10 +23,16 @@ import {
 } from '@sourcegraph/wildcard'
 
 import { LineChart, ParentSize, Series } from '../../charts'
-import { AnalyticsDateRange, SearchStatisticsResult, SearchStatisticsVariables } from '../../graphql-operations'
+import {
+    AnalyticsDateRange,
+    SearchStatisticsResult,
+    SearchStatisticsVariables,
+    NotebooksStatisticsResult,
+    NotebooksStatisticsVariables,
+} from '../../graphql-operations'
 
 import { formatNumber } from './format-number'
-import { SEARCH_STATISTICS } from './queries'
+import { SEARCH_STATISTICS, NOTEBOOKS_STATISTICS } from './queries'
 
 import styles from './index.module.scss'
 
@@ -427,6 +433,130 @@ export const AnalyticsOverview: React.FunctionComponent<RouteComponentProps<{}>>
                     <Text>5</Text>
                     <Text>110</Text>
                 </Grid>
+            </Card>
+        </>
+    )
+}
+
+export const AnalyticsNotebooksPage: React.FunctionComponent<RouteComponentProps<{}>> = () => {
+    const [eventAggregation, setEventAggregation] = useState<'count' | 'uniqueUsers'>('count')
+    const [dateRange, setDateRange] = useState<AnalyticsDateRange>(AnalyticsDateRange.LAST_WEEK)
+    const { data, error, loading } = useQuery<NotebooksStatisticsResult, NotebooksStatisticsVariables>(
+        NOTEBOOKS_STATISTICS,
+        {
+            variables: {
+                dateRange,
+            },
+        }
+    )
+    const [stats, timeSavedStats] = useMemo(() => {
+        if (!data) {
+            return []
+        }
+        const { creations, views, blockRuns } = data.site.analytics.notebooks
+        const stats = [
+            {
+                ...creations.summary,
+                totalCount: creations.summary[eventAggregation === 'count' ? 'totalCount' : 'totalUniqueUsers'],
+                name: eventAggregation === 'count' ? 'Notebooks created' : 'Users created notebooks',
+                color: 'var(--cyan)',
+                series: creations.nodes.map(node => ({
+                    date: new Date(node.date),
+                    value: node[eventAggregation],
+                })),
+            },
+            {
+                ...views.summary,
+                totalCount: views.summary[eventAggregation === 'count' ? 'totalCount' : 'totalUniqueUsers'],
+                name: eventAggregation === 'count' ? 'Notebook views' : 'Users viewed notebooks',
+                color: 'var(--orange)',
+                series: views.nodes.map(node => ({
+                    date: new Date(node.date),
+                    value: node[eventAggregation],
+                })),
+            },
+            {
+                ...blockRuns.summary,
+                totalCount: blockRuns.summary[eventAggregation === 'count' ? 'totalCount' : 'totalUniqueUsers'],
+                name: eventAggregation === 'count' ? 'Block runs' : 'Users ran blocks',
+                color: 'var(--body-color)',
+                legendPosition: 'right',
+            },
+        ]
+        const timeSavedStats = [
+            {
+                label: 'Views',
+                minPerItem: 5,
+                description:
+                    'Notebooks reduce the time it takes to create living documentation and share it. Each notebook view accounts for time saved by both creators and consumers of notebooks.',
+                value: views.summary.totalCount,
+            },
+        ]
+        return [stats, timeSavedStats]
+    }, [data, eventAggregation])
+
+    if (error) {
+        return <div>Something went wrong! :( Please, try again later. </div>
+    }
+
+    if (loading) {
+        return <LoadingSpinner />
+    }
+
+    return (
+        <>
+            <H2 className="mb-4 d-flex align-items-center">
+                <Icon
+                    className="mr-1"
+                    color="var(--link-color)"
+                    svgPath={mdiChartLineVariant}
+                    size="sm"
+                    aria-label="Notebooks Statistics"
+                />
+                Analytics / Notebooks
+            </H2>
+
+            <Card className="p-2 position-relative">
+                {stats && (
+                    <Chart
+                        className="ml-4"
+                        stats={stats}
+                        dateRange={dateRange}
+                        onDateRangeChange={setDateRange}
+                        labelX="Time"
+                    />
+                )}
+                <div className="d-flex justify-content-end">
+                    <ButtonGroup className="mb-3">
+                        <Tooltip content="total # of actions triggered" placement="top">
+                            <Button
+                                onClick={() => setEventAggregation('count')}
+                                outline={eventAggregation !== 'count'}
+                                variant="primary"
+                                display="block"
+                                size="sm"
+                            >
+                                Totals
+                            </Button>
+                        </Tooltip>
+
+                        <Tooltip content="unique # of users triggered" placement="top">
+                            <Button
+                                onClick={() => setEventAggregation('uniqueUsers')}
+                                outline={eventAggregation !== 'uniqueUsers'}
+                                variant="primary"
+                                display="block"
+                                size="sm"
+                            >
+                                Uniques
+                            </Button>
+                        </Tooltip>
+                    </ButtonGroup>
+                </div>
+                <H3 className="my-3">Time saved</H3>
+                {timeSavedStats?.map(timeSavedStatItem => (
+                    <TimeSavedCalculator key={timeSavedStatItem.label} {...timeSavedStatItem} />
+                ))}
             </Card>
         </>
     )

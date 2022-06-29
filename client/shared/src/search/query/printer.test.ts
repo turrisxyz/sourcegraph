@@ -15,7 +15,8 @@ describe('stringHuman', () => {
             scanSearchQuery('(a or b) (-repo:foo    AND file:bar) content:"count:5000" /yowza/ "a\'b" \\d+')
         )
         expect(stringHuman(tokens)).toMatchInlineSnapshot(
-            '(a or b) (-repo:foo AND file:bar) content:"count:5000" /yowza/ "a\'b" \\d+'
+            '(a or b) (-repo:foo AND file:bar) content:"count:5000" /yowza/ "a\'b" \\d+',
+            `(a or b) (-repo:foo AND file:bar) content:"\\"count:5000\\"" /yowza/ "a'b" \\d+`
         )
     })
 })

@@ -125,7 +125,7 @@ const quoted = (delimiter: string): Scanner<Literal> => (input, start) => {
     return {
         type: 'success',
         // end + 1 as `end` is currently the index of the quote in the string.
-        term: createLiteral(input.slice(start + 1, end), { start, end: end + 1 }, true),
+        term: createLiteral(input.slice(start, end + 1), { start, end: end + 1 }, true),
     }
 }
 

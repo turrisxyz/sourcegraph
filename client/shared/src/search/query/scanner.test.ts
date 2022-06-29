@@ -108,7 +108,8 @@ describe('scanSearchQuery() for literal search', () => {
 
     test('filter with quoted value', () => {
         expect(scanSearchQuery('f:"b"')).toMatchInlineSnapshot(
-            '{"type":"success","term":[{"type":"filter","range":{"start":0,"end":5},"field":{"type":"literal","value":"f","range":{"start":0,"end":1}},"value":{"type":"literal","value":"b","range":{"start":2,"end":5},"quoted":true},"negated":false}]}'
+            '{"type":"success","term":[{"type":"filter","range":{"start":0,"end":5},"field":{"type":"literal","value":"f","range":{"start":0,"end":1}},"value":{"type":"literal","value":"b","range":{"start":2,"end":5},"quoted":true},"negated":false}]}',
+            `{"type":"success","term":[{"type":"filter","range":{"start":0,"end":5},"field":{"type":"literal","value":"f","range":{"start":0,"end":1}},"value":{"type":"literal","value":"\\"b\\"","range":{"start":2,"end":5},"quoted":true},"negated":false}]}`
         )
     })
 
@@ -131,7 +132,8 @@ describe('scanSearchQuery() for literal search', () => {
 
     test('quoted, double quotes, regexp', () =>
         expect(scanSearchQuery('"a:b"', false, SearchPatternType.regexp)).toMatchInlineSnapshot(
-            '{"type":"success","term":[{"type":"literal","value":"a:b","range":{"start":0,"end":5},"quoted":true}]}'
+            '{"type":"success","term":[{"type":"literal","value":"a:b","range":{"start":0,"end":5},"quoted":true}]}',
+            `{"type":"success","term":[{"type":"literal","value":"\\"a:b\\"","range":{"start":0,"end":5},"quoted":true}]}`
         ))
 
     test('quoted, single quotes, literal', () =>
@@ -141,7 +143,8 @@ describe('scanSearchQuery() for literal search', () => {
 
     test('quoted, single quotes, regexp', () =>
         expect(scanSearchQuery("'a:b'", false, SearchPatternType.regexp)).toMatchInlineSnapshot(
-            '{"type":"success","term":[{"type":"literal","value":"a:b","range":{"start":0,"end":5},"quoted":true}]}'
+            '{"type":"success","term":[{"type":"literal","value":"a:b","range":{"start":0,"end":5},"quoted":true}]}',
+            `{"type":"success","term":[{"type":"literal","value":"'a:b'","range":{"start":0,"end":5},"quoted":true}]}`
         ))
 
     test('quoted (do not escape quotes in literal mode)', () =>
@@ -151,7 +154,8 @@ describe('scanSearchQuery() for literal search', () => {
 
     test('quoted (escape quotes in regex mode)', () =>
         expect(scanSearchQuery('"-\\"a\\":b"', false, SearchPatternType.regexp)).toMatchInlineSnapshot(
-            '{"type":"success","term":[{"type":"literal","value":"-\\\\\\"a\\\\\\":b","range":{"start":0,"end":10},"quoted":true}]}'
+            '{"type":"success","term":[{"type":"literal","value":"-\\\\\\"a\\\\\\":b","range":{"start":0,"end":10},"quoted":true}]}',
+            `{"type":"success","term":[{"type":"literal","value":"\\"-\\\\\\"a\\\\\\":b\\"","range":{"start":0,"end":10},"quoted":true}]}`
         ))
 
     test('complex query', () =>
@@ -197,7 +201,8 @@ describe('scanSearchQuery() for regexp', () => {
 
     test('interpret regexp slash quotes', () => {
         expect(scanSearchQuery('r:a /a regexp \\ pattern/', false, SearchPatternType.regexp)).toMatchInlineSnapshot(
-            '{"type":"success","term":[{"type":"filter","range":{"start":0,"end":3},"field":{"type":"literal","value":"r","range":{"start":0,"end":1}},"value":{"type":"literal","value":"a","range":{"start":2,"end":3},"quoted":false},"negated":false},{"type":"whitespace","range":{"start":3,"end":4}},{"type":"literal","value":"a regexp \\\\ pattern","range":{"start":4,"end":24},"quoted":true}]}'
+            '{"type":"success","term":[{"type":"filter","range":{"start":0,"end":3},"field":{"type":"literal","value":"r","range":{"start":0,"end":1}},"value":{"type":"literal","value":"a","range":{"start":2,"end":3},"quoted":false},"negated":false},{"type":"whitespace","range":{"start":3,"end":4}},{"type":"literal","value":"a regexp \\\\ pattern","range":{"start":4,"end":24},"quoted":true}]}',
+            `{"type":"success","term":[{"type":"filter","range":{"start":0,"end":3},"field":{"type":"literal","value":"r","range":{"start":0,"end":1}},"value":{"type":"literal","value":"a","range":{"start":2,"end":3},"quoted":false},"negated":false},{"type":"whitespace","range":{"start":3,"end":4}},{"type":"literal","value":"/a regexp \\\\ pattern/","range":{"start":4,"end":24},"quoted":true}]}`
         )
     })
 })
@@ -205,7 +210,8 @@ describe('scanSearchQuery() for regexp', () => {
 describe('scanSearchQuery() for standard', () => {
     test('scan literal and regexp patterns', () => {
         expect(scanSearchQuery('pfalz /mosel/', false, SearchPatternType.standard)).toMatchInlineSnapshot(
-            '{"type":"success","term":[{"type":"pattern","range":{"start":0,"end":5},"kind":1,"value":"pfalz"},{"type":"whitespace","range":{"start":5,"end":6}},{"type":"pattern","range":{"start":6,"end":13},"kind":2,"value":"mosel"}]}'
+            '{"type":"success","term":[{"type":"pattern","range":{"start":0,"end":5},"kind":1,"value":"pfalz"},{"type":"whitespace","range":{"start":5,"end":6}},{"type":"pattern","range":{"start":6,"end":13},"kind":2,"value":"mosel"}]}',
+            `{"type":"success","term":[{"type":"pattern","range":{"start":0,"end":5},"kind":1,"value":"pfalz"},{"type":"whitespace","range":{"start":5,"end":6}},{"type":"pattern","range":{"start":6,"end":13},"kind":2,"value":"/mosel/"}]}`
         )
     })
 })
